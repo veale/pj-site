@@ -3,9 +3,14 @@
 
 .gh-head {
     padding: 3vmin 4vmin;
+    font-family: var(--font-heading);
     font-size: 1.6rem;
     line-height: 1.3em;
     background: inherit;
+}
+
+.gh-head .gh-button {
+    font-family: var(--font-heading);
 }
 
 .gh-head a {
