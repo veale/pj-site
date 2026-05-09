@@ -1,14 +1,6 @@
 /* Reset
 /* ---------------------------------------------------------- */
 
-@font-face {
-    font-family: "NaNHoloGigawide Ultra";
-    src: url("../../fonts/NaNHoloGigawide-Ultra.woff2") format("woff2");
-    font-style: normal;
-    font-weight: 400;
-    font-display: swap;
-}
-
 *,
 *::before,
 *::after {

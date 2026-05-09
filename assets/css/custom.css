@@ -1,0 +1,33 @@
+/* Custom typography overrides */
+
+@font-face {
+    font-family: "NaNHoloGigawide Ultra";
+    src: url("../fonts/NaNHoloGigawide-Ultra.woff2") format("woff2");
+    font-style: normal;
+    font-weight: 400;
+    font-display: swap;
+}
+
+:root {
+    --font-display: "NaNHoloGigawide Ultra", var(--font-sans-serif);
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+.gh-head-logo,
+.gh-card-title,
+.gh-title,
+.gh-auth-title,
+.gh-page-head h1,
+.gh-canvas h1,
+.gh-canvas h2,
+.gh-canvas h3,
+.gh-canvas h4,
+.gh-canvas h5,
+.gh-canvas h6 {
+    font-family: var(--font-display);
+}
