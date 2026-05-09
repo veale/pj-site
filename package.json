@@ -48,6 +48,7 @@
         "@rollup/plugin-node-resolve": "^16.0.0",
         "@rollup/plugin-terser": "^0.4.0",
         "bestzip": "^2.2.1",
+        "jsonwebtoken": "^9.0.3",
         "postcss": "^8.4.24",
         "postcss-import": "^16.0.0",
         "postcss-preset-env": "^10.0.0",
