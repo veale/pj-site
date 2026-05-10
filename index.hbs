@@ -400,9 +400,11 @@
     pixelateAndReveal();
   });
 
-  // Largest font where no item wraps (scrollWidth > innerW) and the stacked
-  // line-boxes fit vertically. line-height is set in CSS to a tight value so
-  // there's less invisible leading between items — the rectangle fills.
+  // NaNHolo is ultra-wide, so a long item like "spotify" would force every
+  // item to a uniform tiny font and leave most of the rectangle empty.
+  // Instead, size each item to its own horizontal max, then scale all items
+  // down uniformly if the stack overflows vertically — and cap individual
+  // items so a single short word can't grow taller than its share.
   function fitMenu() {
     const items = Array.from(menuEl.querySelectorAll('.enter-card__menu-item'));
     if (!items.length) return;
@@ -415,36 +417,42 @@
     const innerW = menuEl.clientWidth - padLeft - padRight;
     if (innerH <= 0 || innerW <= 0) return;
 
-    function setSize(px) {
-      for (const el of items) el.style.fontSize = px + 'px';
-    }
-    // scrollWidth excludes the text-stroke that paints outside the glyph
-    // bounds, so leave a small buffer to keep stroked text inside the box.
+    // text-stroke paints outside the glyph and isn't reported by scrollWidth.
     const wBuf = 4;
-    function fits(px) {
-      setSize(px);
-      let total = 0;
-      for (const el of items) {
-        if (el.scrollWidth > innerW - wBuf) return false;
-        total += el.offsetHeight;
-        if (total > innerH + 0.5) return false;
-      }
-      return true;
-    }
-
-    // Cap the search: if there are fewer than 4 items, pretend there are 4
-    // for the purpose of sizing. Otherwise a 1-item menu would size up so
-    // large that a single glyph nearly fills the rectangle.
+    // No item should be taller than this — keeps "about" from ballooning when
+    // "spotify" is what's limiting the rest.
     const effectiveN = Math.max(items.length, 4);
     const perItemCap = innerH / effectiveN / 0.9; // line-height: 0.9
-    let lo = 4;
-    let hi = Math.max(8, perItemCap);
-    if (!fits(lo)) { setSize(lo); return; }
-    for (let i = 0; i < 24; i++) {
-      const mid = (lo + hi) / 2;
-      if (fits(mid)) lo = mid; else hi = mid;
+
+    // For each item, binary-search its largest font-size that fits its row
+    // horizontally (and respects the per-item height cap).
+    const sizes = [];
+    for (const el of items) {
+      let lo = 4;
+      let hi = Math.max(8, perItemCap);
+      function fitsAt(px) {
+        el.style.fontSize = px + 'px';
+        return el.scrollWidth <= innerW - wBuf;
+      }
+      if (!fitsAt(lo)) { sizes.push(lo); continue; }
+      for (let i = 0; i < 22; i++) {
+        const mid = (lo + hi) / 2;
+        if (fitsAt(mid)) lo = mid; else hi = mid;
+      }
+      sizes.push(lo);
     }
-    setSize(Math.floor(lo));
+
+    // Apply the per-item maxes, then scale everything down proportionally if
+    // the stack is taller than the rectangle.
+    for (let i = 0; i < items.length; i++) items[i].style.fontSize = sizes[i] + 'px';
+    let total = 0;
+    for (const el of items) total += el.offsetHeight;
+    if (total > innerH) {
+      const ratio = innerH / total;
+      for (let i = 0; i < items.length; i++) {
+        items[i].style.fontSize = (sizes[i] * ratio) + 'px';
+      }
+    }
   }
 
   // Debounced rAF wrapper — avoids measuring mid-resize when the card is
