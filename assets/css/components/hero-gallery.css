@@ -29,5 +29,38 @@
     margin: 0;
 }
 
-/* Title mask layer is no longer used; keep the element hidden by default. */
-.title-mask-layer { display: none !important; }
+/* Title window — a fixed overlay that sits above the navbar and contains
+ * cloned <img> elements positioned at their source images' viewport
+ * coordinates. The whole layer is masked to the live title's text shape, so
+ * only photo content can show through the title's interior. Body text is
+ * never cloned here, so text never bleeds into the title.
+ */
+.title-mask-layer {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 110;
+    overflow: visible;
+    -webkit-mask-image: var(--title-mask, none);
+            mask-image: var(--title-mask, none);
+    -webkit-mask-position: var(--title-mask-pos, 0 0);
+            mask-position: var(--title-mask-pos, 0 0);
+    -webkit-mask-size: var(--title-mask-size, 100% 100%);
+            mask-size: var(--title-mask-size, 100% 100%);
+    -webkit-mask-repeat: no-repeat;
+            mask-repeat: no-repeat;
+}
+
+.title-mask-layer:not([data-ready]) {
+    display: none;
+}
+
+.title-mask-layer img {
+    position: absolute;
+    top: 0;
+    left: 0;
+    transform-origin: 0 0;
+    will-change: transform;
+    opacity: 1 !important;
+    visibility: visible !important;
+}

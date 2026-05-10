@@ -65,30 +65,11 @@ a:not([class]) {
     top: 0;
     z-index: 100;
     padding: 0;
-    background: transparent;
+    background: #FF6720;
     color: #fff;
     font-family: var(--font-heading);
     font-size: 1.6rem;
     line-height: 1.3em;
-    isolation: isolate;
-}
-
-/* Orange backdrop for the navbar with a text-shaped hole punched through it. */
-.gh-head::before {
-    content: "";
-    position: absolute;
-    inset: 0;
-    z-index: -1;
-    background: #FF6720;
-    pointer-events: none;
-    -webkit-mask-image: var(--head-mask, none);
-            mask-image: var(--head-mask, none);
-    -webkit-mask-size: 100% 100%;
-            mask-size: 100% 100%;
-    -webkit-mask-repeat: no-repeat;
-            mask-repeat: no-repeat;
-    -webkit-mask-mode: luminance;
-            mask-mode: luminance;
 }
 
 .gh-head .gh-head-logo {
@@ -234,6 +215,120 @@ a:not([class]) {
     text-underline-offset: 0.15em;
     box-decoration-break: clone;
     -webkit-box-decoration-break: clone;
+}
+
+/* Post date — matches the card date-tab vocabulary (white bg, orange text) */
+.gh-post-date {
+    display: inline-block;
+    background: #fff;
+    color: var(--color-orange);
+    font-family: var(--font-sans-serif);
+    font-size: 1.2rem;
+    font-weight: 500;
+    letter-spacing: 0.05em;
+    padding: 4px 8px;
+    margin-top: 1rem;
+    line-height: 1;
+    border-radius: 2px;
+}
+
+.gh-post-date time {
+    display: inline-block;
+    line-height: 1;
+}
+
+/* Bookmark / link cards inside articles — match the news-card style */
+.gh-content .kg-bookmark-card,
+.gh-canvas .kg-bookmark-card {
+    margin: 1.6em 0;
+}
+
+.gh-content .kg-bookmark-card a.kg-bookmark-container,
+.gh-canvas .kg-bookmark-card a.kg-bookmark-container {
+    display: flex;
+    flex-direction: row-reverse;
+    align-items: stretch;
+    background: #fff !important;
+    color: var(--color-orange) !important;
+    text-decoration: none;
+    border: none;
+    border-radius: 0;
+    padding: 0;
+    overflow: hidden;
+    transition: background 150ms ease, color 150ms ease;
+    box-shadow: none;
+    min-height: auto;
+}
+
+.gh-content .kg-bookmark-card a.kg-bookmark-container:hover,
+.gh-canvas .kg-bookmark-card a.kg-bookmark-container:hover {
+    background: var(--color-orange) !important;
+    color: #fff !important;
+}
+
+.kg-bookmark-content {
+    flex: 1 1 auto;
+    padding: 1.6rem 1.6rem 2.6rem;
+    color: inherit;
+    font-family: var(--font-sans-serif);
+}
+
+.kg-bookmark-title {
+    font-family: var(--font-sans-serif);
+    font-size: 1.9rem;
+    font-weight: 600;
+    line-height: 1.2;
+    letter-spacing: -0.01em;
+    color: inherit;
+    margin: 0 0 0.6rem;
+}
+
+.kg-bookmark-description {
+    font-size: 1.35rem;
+    line-height: 1.45;
+    color: inherit;
+    margin: 0;
+    -webkit-line-clamp: 3;
+    overflow: hidden;
+}
+
+.kg-bookmark-metadata {
+    margin-top: 0.8rem;
+    font-size: 1.1rem;
+    color: inherit;
+    display: flex;
+    align-items: center;
+    gap: 0.5em;
+    opacity: 0.85;
+}
+
+.kg-bookmark-icon {
+    width: 16px;
+    height: 16px;
+    margin: 0 0.25em 0 0;
+}
+
+.kg-bookmark-author::after {
+    content: " ";
+}
+
+.kg-bookmark-thumbnail {
+    flex: 0 0 28%;
+    max-width: 28%;
+    overflow: hidden;
+}
+
+.kg-bookmark-thumbnail img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    margin: 0;
+}
+
+/* Bookmark with no thumbnail */
+.kg-bookmark-card:not(:has(.kg-bookmark-thumbnail img)) .kg-bookmark-thumbnail {
+    display: none;
 }
 
 /* Footer — tight notice block fed by Ghost page slug "footer-notice" */

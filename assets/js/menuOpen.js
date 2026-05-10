@@ -1,8 +1,10 @@
-// Header behaviour: fit the SVG title to its natural text proportions, and
-// detect overflow on the primary nav so the right-side scroll arrow appears.
+// Header behaviour: fit the SVG title to its natural text proportions, build
+// the title-window mask + image mirror, and detect overflow on the primary
+// nav so the right-side scroll arrow appears.
 export default function menuOpen() {
     fitTitle();
     wireNavOverflow();
+    imageMirror();
 }
 
 function fitTitle() {
@@ -18,7 +20,7 @@ function fitTitle() {
                 svg.setAttribute('viewBox', `${bbox.x} ${bbox.y} ${bbox.width} ${bbox.height}`);
             }
         } catch (e) { /* ignore */ }
-        buildHeadMask();
+        buildTitleMask();
     };
 
     measureAndMask();
@@ -27,7 +29,6 @@ function fitTitle() {
     }
     window.addEventListener('load', measureAndMask);
     window.addEventListener('resize', measureAndMask);
-    window.addEventListener('scroll', buildHeadMask, { passive: true });
 }
 
 let _displayFontPromise = null;
@@ -76,27 +77,21 @@ function loadDisplayFontDataUrl() {
     return _displayFontPromise;
 }
 
-async function buildHeadMask() {
-    const head = document.getElementById('gh-head');
-    if (!head) return;
+async function buildTitleMask() {
+    const layer = document.querySelector('.title-mask-layer');
+    if (!layer) return;
     const titleSvg = document.querySelector('.gh-head-title-svg');
     if (!titleSvg) return;
     const text = titleSvg.querySelector('text');
     if (!text || !titleSvg.getAttribute('viewBox')) return;
 
-    const hr = head.getBoundingClientRect();
     const tr = titleSvg.getBoundingClientRect();
-    if (!hr.width || !tr.width) return;
+    if (!tr.width || !tr.height) return;
 
-    // SVG-as-data-URL renders in its own document context and cannot see the
-    // page's @font-face rules. Fetch the WOFF2, base64-embed it inside the
-    // SVG via <style>@font-face</style> so glyph metrics match the live title.
     const fontDataUrl = await loadDisplayFontDataUrl();
 
-    // Clone the visible title SVG so the mask uses identical glyph metrics
-    // and viewBox positioning. Strip the <title>, set fill black + remove
-    // stroke, and bake the computed font-* into attributes since the
-    // serialized SVG won't see the stylesheet.
+    // Clone the live title SVG so glyph metrics match. Bake font-* attrs
+    // because the serialized SVG won't see the page's stylesheet.
     const cs = window.getComputedStyle(text);
     const clone = titleSvg.cloneNode(true);
     clone.removeAttribute('class');
@@ -104,43 +99,113 @@ async function buildHeadMask() {
     Array.from(clone.querySelectorAll('title')).forEach((t) => t.remove());
     const t2 = clone.querySelector('text');
     t2.removeAttribute('class');
-    t2.setAttribute('fill', 'black');
+    t2.setAttribute('fill', 'white');
     t2.setAttribute('stroke', 'none');
     t2.removeAttribute('vector-effect');
     t2.setAttribute('font-family', (cs.fontFamily || 'sans-serif').replace(/"/g, "'"));
     t2.setAttribute('font-weight', cs.fontWeight || '400');
     t2.setAttribute('font-size', String(parseFloat(cs.fontSize) || 160));
-
-    // Position the clone at the live title's screen coordinates within the header.
-    const innerX = Math.round(tr.left - hr.left);
-    const innerY = Math.round(tr.top - hr.top);
-    let innerStr = new XMLSerializer().serializeToString(clone);
-    if (!/\sxmlns=/.test(innerStr)) {
-        innerStr = innerStr.replace(/^<svg/, '<svg xmlns="http://www.w3.org/2000/svg"');
+    clone.setAttribute('width', tr.width);
+    clone.setAttribute('height', tr.height);
+    if (!clone.getAttribute('xmlns')) {
+        clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
     }
-    innerStr = innerStr.replace(
-        /^<svg/,
-        `<svg x="${innerX}" y="${innerY}" width="${tr.width}" height="${tr.height}"`
-    );
-
-    const W = Math.round(hr.width);
-    const H = Math.round(hr.height);
 
     const fontStyle = fontDataUrl
         ? `<style>@font-face{font-family:'NaNHoloGigawide Ultra';src:url('${fontDataUrl}') format('woff2');font-weight:400;font-style:normal;}</style>`
         : '';
 
-    // Use an SVG <mask> so the resulting image has true alpha=0 in text shape
-    // and alpha=1 elsewhere — works under either CSS mask-mode (alpha or
-    // luminance), so we don't depend on browser defaults.
-    const outer =
-        `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">` +
-        `<defs>${fontStyle}<mask id="hm" maskUnits="userSpaceOnUse" x="0" y="0" width="${W}" height="${H}">` +
-        `<rect width="100%" height="100%" fill="white"/>${innerStr}</mask></defs>` +
-        `<rect width="100%" height="100%" fill="white" mask="url(#hm)"/></svg>`;
+    let innerStr = new XMLSerializer().serializeToString(clone);
+    if (fontStyle) {
+        innerStr = innerStr.replace(/<svg([^>]*)>/, `<svg$1><defs>${fontStyle}</defs>`);
+    }
 
-    const url = `url("data:image/svg+xml;utf8,${encodeURIComponent(outer)}")`;
-    head.style.setProperty('--head-mask', url);
+    // Mask image: white text on transparent background. Mask alpha is
+    // 1 inside glyphs, 0 elsewhere — so the mirror layer is visible only
+    // through the title's letter shapes.
+    const url = `url("data:image/svg+xml;utf8,${encodeURIComponent(innerStr)}")`;
+    layer.style.setProperty('--title-mask', url);
+    layer.style.setProperty('--title-mask-pos', `${tr.left}px ${tr.top}px`);
+    layer.style.setProperty('--title-mask-size', `${tr.width}px ${tr.height}px`);
+    layer.setAttribute('data-ready', '1');
+}
+
+// Image mirror: clone every <img> on the page (gallery, post body, etc.) into
+// the title-mask-layer and continually align each clone to its source image's
+// viewport rect. Only images are cloned, so text never appears in the mask.
+function imageMirror() {
+    const layer = document.querySelector('.title-mask-layer');
+    if (!layer) return;
+
+    const pairs = []; // { src, clone }
+    const seen = new WeakSet();
+
+    function shouldMirror(img) {
+        if (seen.has(img)) return false;
+        if (img.closest('.title-mask-layer')) return false;
+        // Only large content images
+        const r = img.getBoundingClientRect();
+        const w = r.width || img.naturalWidth || 0;
+        if (w < 80) return false;
+        return true;
+    }
+
+    function addClone(img) {
+        seen.add(img);
+        const c = img.cloneNode(false);
+        c.removeAttribute('id');
+        c.setAttribute('aria-hidden', 'true');
+        c.style.position = 'absolute';
+        c.style.top = '0';
+        c.style.left = '0';
+        c.style.transformOrigin = '0 0';
+        c.style.opacity = '1';
+        c.style.visibility = 'visible';
+        c.style.transform = 'translate(-99999px,-99999px)';
+        layer.appendChild(c);
+        pairs.push({ src: img, clone: c });
+    }
+
+    function rescan() {
+        const imgs = document.querySelectorAll(
+            '.gh-main img, .hero-gallery img, .gh-content img, .gh-canvas img'
+        );
+        imgs.forEach((img) => { if (shouldMirror(img)) addClone(img); });
+    }
+
+    let raf = false;
+    function tick() {
+        for (const { src, clone } of pairs) {
+            if (!src.isConnected) {
+                clone.style.transform = 'translate(-99999px,-99999px)';
+                continue;
+            }
+            const r = src.getBoundingClientRect();
+            clone.style.width = `${r.width}px`;
+            clone.style.height = `${r.height}px`;
+            clone.style.transform = `translate(${r.left}px, ${r.top}px)`;
+        }
+        raf = false;
+    }
+    function schedule() {
+        if (!raf) {
+            raf = true;
+            requestAnimationFrame(tick);
+        }
+    }
+
+    rescan();
+    schedule();
+
+    // Late-loading content (hero gallery, lazy images, etc.)
+    document.addEventListener('hero-gallery:ready', () => { rescan(); schedule(); });
+    window.addEventListener('load', () => { rescan(); schedule(); });
+    window.addEventListener('scroll', schedule, { passive: true });
+    window.addEventListener('resize', schedule);
+
+    // Keep clone src up-to-date if the source image's src changes after load.
+    const mo = new MutationObserver(() => { rescan(); schedule(); });
+    mo.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['src'] });
 }
 
 function wireNavOverflow() {
