@@ -428,8 +428,13 @@
       return true;
     }
 
+    // Cap the search: if there are fewer than 4 items, pretend there are 4
+    // for the purpose of sizing. Otherwise a 1-item menu would size up so
+    // large that a single glyph nearly fills the rectangle.
+    const effectiveN = Math.max(items.length, 4);
+    const perItemCap = innerH / effectiveN / 0.9; // line-height: 0.9
     let lo = 4;
-    let hi = Math.max(8, innerH);
+    let hi = Math.max(8, perItemCap);
     if (!fits(lo)) { setSize(lo); return; }
     for (let i = 0; i < 24; i++) {
       const mid = (lo + hi) / 2;
@@ -530,11 +535,9 @@ body.home-template .title-outline-layer {
 .enter-card {
     position: relative;
     z-index: 2;
-    width: min(40vw, 50vh);
+    width: min(42vmin, 420px);
     aspect-ratio: 3 / 4;
-    max-width: 420px;
-    max-height: 80vh;
-    margin: 6vmin auto;
+    margin: 0 auto;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -542,7 +545,7 @@ body.home-template .title-outline-layer {
 }
 .enter-card.enter-card--ready { visibility: visible; }
 @media (max-width: 700px) {
-    .enter-card { width: min(70vw, 60vh); max-width: 360px; }
+    .enter-card { width: min(65vmin, 360px); }
 }
 .enter-card__photo {
     position: absolute;
