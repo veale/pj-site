@@ -121,6 +121,13 @@ a:not([class]) {
     -ms-overflow-style: none;
 }
 
+/* When the row is less than ~70% full, drop space-between and align all
+ * items left with a fixed gap. (Toggled by JS in menuOpen.js.) */
+.gh-head-nav.is-loose .gh-head-nav-scroll {
+    justify-content: flex-start;
+    gap: 3vmin;
+}
+
 .gh-head-nav-scroll::-webkit-scrollbar {
     display: none;
 }

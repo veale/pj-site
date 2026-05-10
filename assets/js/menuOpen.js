@@ -284,9 +284,23 @@ function wireNavOverflow() {
     const arrow = nav.querySelector('.gh-head-nav-arrow');
     if (!scroller || !arrow) return;
 
+    const LOOSE_RATIO = 0.7;
+
     const update = () => {
         const overflowing = scroller.scrollWidth - scroller.clientWidth > 1;
         nav.classList.toggle('is-overflowing', overflowing);
+
+        // Compute natural content width (sum of items + gaps). Compare to
+        // container width to decide between space-between and flex-start.
+        const items = Array.from(scroller.querySelectorAll(':scope .nav li, :scope > a'));
+        if (items.length > 0 && scroller.clientWidth > 0) {
+            const gap = parseFloat(getComputedStyle(scroller).gap) || 0;
+            let sum = 0;
+            for (const el of items) sum += el.getBoundingClientRect().width;
+            sum += gap * (items.length - 1);
+            const ratio = sum / scroller.clientWidth;
+            nav.classList.toggle('is-loose', ratio < LOOSE_RATIO);
+        }
     };
 
     arrow.addEventListener('click', () => {
@@ -296,5 +310,6 @@ function wireNavOverflow() {
     window.addEventListener('resize', update);
     scroller.addEventListener('scroll', update);
     window.addEventListener('load', update);
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(update);
     update();
 }
