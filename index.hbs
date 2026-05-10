@@ -1,149 +1,474 @@
 {{!< default}}
 {{!--
-    Front page = hero gallery only. Posts live on /news/ via page-news.hbs.
-    Editor adds a Ghost Page with slug "home-hero" containing a Gallery card
-    or Image cards; this template pulls its rendered HTML.
+    Front page: pixel-zone scrolling-text background + centered portrait card
+    showing the first home-hero image. The card has an ENTER link; clicking
+    it pixelates the photo and reveals a white panel filled with the nav menu
+    items, stacked vertically.
+
+    Settings for the pixel-zone background are tuned to match the agreed
+    screenshot defaults.
 --}}
-<section class="hero-gallery" data-hero-gallery>
-    <div class="hero-gallery__source" hidden>
-        {{#get "pages" filter="slug:home-hero" as |heroPages|}}
-            {{#foreach heroPages}}
-                {{{content}}}
-            {{/foreach}}
-        {{/get}}
+
+{{!-- Hidden source: first image of the home-hero gallery --}}
+<div class="index-hero-source" hidden>
+    {{#get "pages" filter="slug:home-hero" as |heroPages|}}
+        {{#foreach heroPages}}
+            {{{content}}}
+        {{/foreach}}
+    {{/get}}
+</div>
+
+{{!-- Hidden source: site navigation cloned for the reveal panel --}}
+<div class="index-nav-source" hidden>
+    {{navigation}}
+</div>
+
+<section class="index-front" data-index-front data-site-title="{{@site.title}}">
+    <div class="pixel-zone" id="pixel-zone" aria-hidden="true"></div>
+
+    <div class="enter-card" data-enter-card>
+        <div class="enter-card__photo" data-enter-photo></div>
+        <canvas class="enter-card__pixel" data-enter-pixel hidden></canvas>
+        <a class="enter-card__link" href="#" data-enter-link>enter</a>
+        <div class="enter-card__menu" data-enter-menu hidden></div>
     </div>
-    <div class="hero-gallery__stage" data-hero-stage></div>
 </section>
 
-<script type="module">
-import { VFX } from "https://esm.sh/@vfx-js/core@0.8.0";
+<script>
+(function () {
+  // ---------------- Pixel-zone background ----------------
+  const TEXT = (document.querySelector('[data-index-front]')?.dataset.siteTitle || 'possiblyjamie').trim() || 'possiblyjamie';
+  const DPR = Math.max(1, window.devicePixelRatio || 1);
 
-const postShader = `
-precision highp float;
-uniform sampler2D src;
-uniform vec2 offset;
-uniform vec2 resolution;
-uniform float time;
-out vec4 outColor;
+  const PALETTE_DARK = [
+    '#FF1F4F', '#3CC8FF', '#A4FF1F', '#FFE000',
+    '#FF6A1F', '#FF3838', '#1FFFE0', '#B41FFF',
+    '#FF1FCC', '#1FFF6A', '#FFB81F', '#54FFFF'
+  ];
 
-vec4 readTex(vec2 uv) {
-  vec4 c = texture(src, uv);
-  return c;
-}
+  // Defaults pulled from the agreed screenshot.
+  const state = {
+    speed: 64,
+    rowHeightVh: 10,
+    rowNoise: 40 / 100,
+    zoneWidth: 1140,
+    maxPix: 1,
+    fontScale: 101 / 100,
+    colorCount: 1,
+    outlineProp: 69,
+    outlineThick: 3,
+    overlap: false,
+    bgColor: '#0a0a0a'
+  };
 
-vec2 zoom(vec2 uv, float t) { return (uv - .5) * t + .5; }
-float rand(vec3 p) { return fract(sin(dot(p, vec3(829., 4839., 432.))) * 39428.); }
-
-void main() {
-  vec2 uv = (gl_FragCoord.xy - offset) / resolution;
-
-  vec2 p = uv * 2. - 1.;
-  p.x *= resolution.x / resolution.y;
-  float l = length(p);
-
-  float dist = pow(l, 2.) * .3;
-  dist = smoothstep(0., 1., dist);
-  uv = zoom(uv, 0.5 + dist);
-
-  float a = atan(p.y, p.x);
-  float rd = rand(vec3(a, time, 0));
-  uv = (uv - .5) * (1.0 + rd * pow(l * 0.7, 3.) * 0.3) + .5;
-
-  vec2 uvr = uv, uvg = uv, uvb = uv;
-  float d = (1. + sin(uv.y * 20. + time * 3.) * 0.1) * 0.05;
-  uvr.x += 0.0015;
-  uvb.x -= 0.0015;
-  uvr = zoom(uvr, 1. + d * l * l);
-  uvb = zoom(uvb, 1. - d * l * l);
-
-  vec4 cr = readTex(uvr);
-  vec4 cg = readTex(uvg);
-  vec4 cb = readTex(uvb);
-  outColor = vec4(cr.r, cg.g, cb.b, (cr.a + cg.a + cb.a));
-
-  vec4 deco = vec4(0.);
-  float res = resolution.y;
-  deco += (sin(uv.y * res * .7 + time * 100.) * sin(uv.y * res * .3 - time * 130.)) * 0.05;
-  deco += smoothstep(.01, .0, min(fract(uv.x * 20.), fract(uv.y * 20.))) * 0.1;
-  outColor += deco * smoothstep(2., 0., l);
-
-  outColor *= 1.8 - l * l;
-  outColor += rand(vec3(p, time)) * 0.1;
-}
-`;
-
-const itemShader = `
-precision highp float;
-uniform sampler2D src;
-uniform vec2 offset;
-uniform vec2 resolution;
-uniform float time;
-uniform float id;
-out vec4 outColor;
-
-vec4 readTex(vec2 uv) {
-  vec4 c = texture(src, uv);
-  return c;
-}
-
-float rand(vec2 p) { return fract(sin(dot(p, vec2(829., 483.))) * 394.); }
-
-void main() {
-  vec2 uv = (gl_FragCoord.xy - offset) / resolution;
-  vec2 uvr = uv, uvg = uv, uvb = uv;
-
-  float r = rand(vec2(floor(time * 12.), id));
-  if (r > 0.89) {
-    float y = sin(floor(uv.y / 0.07)) + sin(floor(uv.y / 0.003 + time));
-    float f = rand(vec2(y, floor(time * 5.0) + id)) * 2. - 1.;
-    uvr.x += f * 0.1;
-    uvg.x += f * 0.2;
-    uvb.x += f * 0.3;
+  function hash(n) {
+    n = n | 0;
+    n = ((n ^ 61) ^ (n >>> 16)) | 0;
+    n = (n + (n << 3)) | 0;
+    n = (n ^ (n >>> 4)) | 0;
+    n = Math.imul(n, 0x27d4eb2d) | 0;
+    n = n ^ (n >>> 15);
+    return n >>> 0;
+  }
+  function rowNoiseValue(idx) {
+    return (hash(idx * 1234567 + 89) / 4294967295) * 2 - 1;
+  }
+  function rowHeightFor(idx, baseH, noiseAmount) {
+    return baseH * (1 + rowNoiseValue(idx) * noiseAmount);
   }
 
-  float r2 = rand(vec2(floor(time * 9.), id + 10.));
-  if (r2 > 0.96) {
-    uvr.x += sin(uv.y * 7. + time + id + 1.) * 0.03;
-    uvg.x += sin(uv.y * 5. + time + id + 2.) * 0.03;
-    uvb.x += sin(uv.y * 3. + time + id + 3.) * 0.03;
-  }
+  const stage = document.getElementById('pixel-zone');
+  const off = document.createElement('canvas');
+  const offCtx = off.getContext('2d');
 
-  vec4 cr = readTex(uvr);
-  vec4 cg = readTex(uvg);
-  vec4 cb = readTex(uvb);
-  outColor = vec4(cr.r, cg.g, cb.b, (cr.a + cg.a + cb.a));
-}
-`;
-
-function attachVfx() {
-    try {
-        const vfx = new VFX({ scrollPadding: false });
-        let i = 0;
-        document.querySelectorAll('.hero-gallery__stage img').forEach((el) => {
-            vfx.add(el, { shader: itemShader, uniforms: { id: i++ } });
-        });
-        // VFX-JS appends a fixed-position canvas to <body>; force it below the
-        // sticky navbar so images don't render over the toolbar.
-        const clampCanvas = () => {
-            document.querySelectorAll('canvas').forEach((c) => {
-                const cs = getComputedStyle(c);
-                if (cs.position === 'fixed') {
-                    c.style.zIndex = '1';
-                    c.style.pointerEvents = 'none';
-                }
-            });
-        };
-        clampCanvas();
-        setTimeout(clampCanvas, 50);
-        setTimeout(clampCanvas, 500);
-    } catch (err) {
-        console.warn('VFX-JS init failed', err);
+  class Row {
+    constructor(direction, idx) {
+      this.direction = direction;
+      this.idx = idx;
+      this.position = (Math.random() - 0.5) * 4000;
+      this.canvas = document.createElement('canvas');
+      this.canvas.className = 'pixel-zone__row';
+      this.ctx = this.canvas.getContext('2d');
+      stage.appendChild(this.canvas);
+      this._fontKey = '';
+      this._letterWidths = [];
+      this._wordWidth = 0;
+      this.rowHeight = 0;
+      this.rowHCanvas = 0;
+      this.canvasHCanvas = 0;
+      this.rowYCenter = 0;
     }
+    layout(rowTop, rowHeight, viewportWidth) {
+      const canvasHCSS = rowHeight;
+      this.canvas.style.top = rowTop + 'px';
+      this.canvas.style.height = canvasHCSS + 'px';
+      this.canvas.style.width = viewportWidth + 'px';
+      this.canvas.width = Math.max(1, Math.floor(viewportWidth * DPR));
+      this.canvas.height = Math.max(1, Math.floor(canvasHCSS * DPR));
+      this.rowHeight = rowHeight;
+      this.rowHCanvas = rowHeight * DPR;
+      this.canvasHCanvas = canvasHCSS * DPR;
+      this.rowYCenter = this.canvasHCanvas / 2;
+      this._fontKey = '';
+    }
+    measureLetters(fontStr) {
+      if (this._fontKey === fontStr) return;
+      this._fontKey = fontStr;
+      this.ctx.font = fontStr;
+      this._letterWidths = [];
+      let total = 0;
+      for (const ch of TEXT) {
+        const w = this.ctx.measureText(ch).width;
+        this._letterWidths.push(w);
+        total += w;
+      }
+      this._wordWidth = total;
+    }
+    getColor(instanceIdx) {
+      if (state.colorCount <= 1) return '#FFFFFF';
+      const n = Math.min(state.colorCount, PALETTE_DARK.length);
+      return PALETTE_DARK[hash(instanceIdx + this.idx * 1009) % n];
+    }
+    isOutline(instanceIdx) {
+      if (state.outlineProp <= 0) return false;
+      if (state.outlineProp >= 100) return true;
+      const r = hash(instanceIdx * 7919 + this.idx * 5483 + 314159) % 1000;
+      return r < state.outlineProp * 10;
+    }
+    update(dt) {
+      this.position += this.direction * state.speed * DPR * dt;
+    }
+    draw() {
+      const ctx = this.ctx;
+      const w = this.canvas.width;
+      const h = this.canvas.height;
+      ctx.clearRect(0, 0, w, h);
+
+      const fontSize = this.rowHCanvas * state.fontScale;
+      const fontFam = '"NaNHoloGigawide Ultra", "NaNHoloGigawide", "Futura", "Helvetica Neue", "Arial Black", sans-serif';
+      const fontStr = '900 ' + fontSize + 'px ' + fontFam;
+
+      this.measureLetters(fontStr);
+      const wordWidth = this._wordWidth;
+      if (wordWidth <= 0) return;
+
+      const startX = this.position;
+      const firstInst = Math.floor((-startX) / wordWidth) - 1;
+      const lastInst = Math.ceil((w - startX) / wordWidth) + 1;
+
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'middle';
+      ctx.lineJoin = 'round';
+
+      const yCenter = this.rowYCenter;
+      const canvasThickness = state.outlineThick * DPR;
+
+      for (let i = firstInst; i <= lastInst; i++) {
+        const instX = startX + i * wordWidth;
+        const color = this.getColor(i);
+        const outline = this.isOutline(i);
+
+        let cx = instX;
+        for (let j = 0; j < TEXT.length; j++) {
+          const ch = TEXT[j];
+          const chW = this._letterWidths[j];
+          if (cx + chW < 0 || cx > w) { cx += chW; continue; }
+          ctx.font = fontStr;
+          ctx.imageSmoothingEnabled = true;
+          if (outline) {
+            ctx.strokeStyle = color;
+            ctx.lineWidth = canvasThickness;
+            ctx.strokeText(ch, cx, yCenter);
+          } else {
+            ctx.fillStyle = color;
+            ctx.fillText(ch, cx, yCenter);
+          }
+          cx += chW;
+        }
+      }
+    }
+  }
+
+  const rows = [];
+
+  function layoutRows() {
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    const baseH = vh * (state.rowHeightVh / 100);
+    const heights = [];
+    let cumH = 0, i = 0;
+    while (cumH < vh + baseH) {
+      const h = rowHeightFor(i, baseH, state.rowNoise);
+      heights.push(h);
+      cumH += h;
+      i++;
+      if (i > 80) break;
+    }
+    const target = heights.length;
+    while (rows.length < target) {
+      const dir = rows.length % 2 === 0 ? -1 : 1;
+      rows.push(new Row(dir, rows.length));
+    }
+    while (rows.length > target) {
+      const r = rows.pop();
+      stage.removeChild(r.canvas);
+    }
+    let cumTop = 0;
+    rows.forEach((row, idx) => {
+      row.layout(cumTop, heights[idx], vw);
+      cumTop += heights[idx];
+    });
+  }
+
+  let lastT = 0;
+  function frame(t) {
+    if (!lastT) lastT = t;
+    const dt = Math.min(0.05, (t - lastT) / 1000);
+    lastT = t;
+    for (const row of rows) { row.update(dt); row.draw(); }
+    requestAnimationFrame(frame);
+  }
+
+  document.body.style.backgroundColor = state.bgColor;
+  window.addEventListener('resize', layoutRows);
+
+  function startBg() {
+    layoutRows();
+    requestAnimationFrame(frame);
+  }
+  if (document.fonts && document.fonts.ready) {
+    document.fonts.ready.then(startBg);
+  } else {
+    startBg();
+  }
+
+  // ---------------- Enter card ----------------
+  const card = document.querySelector('[data-enter-card]');
+  const photoEl = document.querySelector('[data-enter-photo]');
+  const linkEl = document.querySelector('[data-enter-link]');
+  const pixelCanvas = document.querySelector('[data-enter-pixel]');
+  const menuEl = document.querySelector('[data-enter-menu]');
+
+  // First image of home-hero
+  const srcImg = document.querySelector('.index-hero-source img');
+  let imgUrl = null;
+  if (srcImg) {
+    imgUrl = srcImg.getAttribute('src');
+    photoEl.style.backgroundImage = 'url(' + imgUrl + ')';
+  } else {
+    photoEl.classList.add('enter-card__photo--empty');
+  }
+
+  // Build nav menu from cloned site navigation
+  const navSource = document.querySelector('.index-nav-source');
+  if (navSource) {
+    const items = navSource.querySelectorAll('a');
+    items.forEach((a) => {
+      const link = document.createElement('a');
+      link.href = a.getAttribute('href') || '#';
+      link.textContent = a.textContent.trim();
+      link.className = 'enter-card__menu-item';
+      menuEl.appendChild(link);
+    });
+  }
+
+  // Pixelate transition: render image at progressively smaller resolutions,
+  // scale back up with nearest-neighbour, then crossfade into menu panel.
+  function pixelateAndReveal() {
+    if (!card.classList.contains('enter-card--ready')) return;
+    card.classList.add('enter-card--transitioning');
+
+    const rect = photoEl.getBoundingClientRect();
+    const w = Math.max(1, Math.floor(rect.width));
+    const h = Math.max(1, Math.floor(rect.height));
+    pixelCanvas.style.width = w + 'px';
+    pixelCanvas.style.height = h + 'px';
+    pixelCanvas.width = w;
+    pixelCanvas.height = h;
+    pixelCanvas.hidden = false;
+
+    const ctx = pixelCanvas.getContext('2d');
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      photoEl.style.visibility = 'hidden';
+      linkEl.style.visibility = 'hidden';
+
+      const aspect = img.width / img.height;
+      const boxAspect = w / h;
+      let sx, sy, sw, sh;
+      if (aspect > boxAspect) {
+        sh = img.height;
+        sw = img.height * boxAspect;
+        sx = (img.width - sw) / 2;
+        sy = 0;
+      } else {
+        sw = img.width;
+        sh = img.width / boxAspect;
+        sx = 0;
+        sy = (img.height - sh) / 2;
+      }
+
+      const steps = [1, 2, 4, 8, 16, 28, 48, 80];
+      let i = 0;
+      function step() {
+        const px = steps[i];
+        const tw = Math.max(1, Math.floor(w / px));
+        const th = Math.max(1, Math.floor(h / px));
+        const tmp = document.createElement('canvas');
+        tmp.width = tw; tmp.height = th;
+        const tctx = tmp.getContext('2d');
+        tctx.imageSmoothingEnabled = false;
+        tctx.drawImage(img, sx, sy, sw, sh, 0, 0, tw, th);
+        ctx.imageSmoothingEnabled = false;
+        ctx.clearRect(0, 0, w, h);
+        ctx.drawImage(tmp, 0, 0, tw, th, 0, 0, w, h);
+        i++;
+        if (i < steps.length) {
+          setTimeout(step, 70);
+        } else {
+          // Reveal menu panel
+          menuEl.hidden = false;
+          requestAnimationFrame(() => {
+            card.classList.add('enter-card--revealed');
+          });
+        }
+      }
+      step();
+    };
+    img.onerror = () => {
+      photoEl.style.visibility = 'hidden';
+      linkEl.style.visibility = 'hidden';
+      menuEl.hidden = false;
+      requestAnimationFrame(() => card.classList.add('enter-card--revealed'));
+    };
+    if (imgUrl) {
+      img.src = imgUrl;
+    } else {
+      img.onerror();
+    }
+  }
+
+  if (imgUrl) card.classList.add('enter-card--ready');
+  else card.classList.add('enter-card--ready', 'enter-card--no-photo');
+
+  linkEl.addEventListener('click', (e) => {
+    e.preventDefault();
+    pixelateAndReveal();
+  });
+})();
+</script>
+
+<style>
+/* Background pixel zone */
+.index-front {
+    position: relative;
+    flex: 1 0 auto;
+    min-height: calc(100vh - 0px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+.pixel-zone {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    background: #0a0a0a;
+}
+.pixel-zone__row {
+    position: absolute;
+    left: 0;
+    display: block;
 }
 
-if (document.documentElement.classList.contains('hero-gallery-ready')) {
-    attachVfx();
-} else {
-    document.addEventListener('hero-gallery:ready', attachVfx, { once: true });
+/* Hide the global title-mask layers on the front page — they reference the
+ * old hero-gallery layout which isn't rendered here. */
+body.home-template .title-mask-layer,
+body.home-template .title-outline-layer {
+    display: none !important;
 }
-</script>
+
+/* Center card */
+.enter-card {
+    position: relative;
+    z-index: 2;
+    width: min(40vw, 50vh);
+    aspect-ratio: 3 / 4;
+    max-width: 420px;
+    max-height: 80vh;
+    margin: 6vmin auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+@media (max-width: 700px) {
+    .enter-card { width: min(70vw, 60vh); max-width: 360px; }
+}
+.enter-card__photo {
+    position: absolute;
+    inset: 0;
+    background-color: #222;
+    background-size: cover;
+    background-position: center;
+}
+.enter-card__pixel {
+    position: absolute;
+    inset: 0;
+    display: block;
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
+}
+.enter-card__link {
+    position: relative;
+    z-index: 3;
+    font-family: "NaNHoloGigawide Ultra", var(--font-sans-serif);
+    font-weight: 900;
+    color: #fff;
+    text-decoration: none;
+    text-transform: lowercase;
+    font-size: clamp(2.2rem, 6vmin, 5.2rem);
+    letter-spacing: 0.02em;
+    padding: 0.3em 0.6em;
+    mix-blend-mode: normal;
+    text-shadow: 0 2px 24px rgba(0,0,0,0.55);
+    transition: transform 200ms ease, opacity 200ms ease;
+}
+.enter-card__link:hover { transform: scale(1.04); }
+.enter-card--transitioning .enter-card__link { opacity: 0; pointer-events: none; }
+
+/* Menu reveal */
+.enter-card__menu {
+    position: absolute;
+    inset: 0;
+    background: #fff;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 260ms ease;
+    padding: 6% 8%;
+    gap: 0;
+}
+.enter-card--revealed .enter-card__menu { opacity: 1; }
+.enter-card--revealed .enter-card__pixel { opacity: 0; transition: opacity 260ms ease; }
+.enter-card__menu-item {
+    display: block;
+    font-family: "NaNHoloGigawide Ultra", var(--font-sans-serif);
+    font-weight: 900;
+    color: #000;
+    text-decoration: none;
+    text-transform: lowercase;
+    font-size: clamp(1.6rem, 3.2vmin, 2.6rem);
+    line-height: 1.15;
+    padding: 0.18em 0;
+    border-bottom: 1px solid rgba(0,0,0,0.08);
+}
+.enter-card__menu-item:last-child { border-bottom: 0; }
+.enter-card__menu-item:hover { color: #FF6720; }
+
+/* Don't let the default theme's flex column rules squash us */
+.gh-main { position: relative; z-index: 1; }
+</style>
