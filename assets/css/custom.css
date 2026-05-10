@@ -1143,36 +1143,27 @@ body { background: #0a0a0a; }
 /* "menu" tab — a small white tab popping up above the top-left of the rect.
  * Visible only on non-home routes. */
 .pj-menu-tab {
-    position: fixed;
+    position: absolute;
     z-index: 3;
-    top: calc(50% - 50vmin * 0.5 * (4/3) - 28px);
-    left: calc(50% - clamp(220px, 50vmin, 420px) / 2);
+    top: -22px;
+    left: 0;
     background: #fff;
     color: #000;
     font-family: "NaNHoloGigawide Ultra", var(--font-sans-serif);
     font-weight: 900;
     text-transform: lowercase;
     text-decoration: none;
-    padding: 6px 14px 4px;
+    padding: 5px 12px 3px;
     line-height: 1;
     font-size: 14px;
     letter-spacing: 0.02em;
-    pointer-events: auto;
     display: none;
 }
 .pj-menu-tab:hover {
     color: transparent;
     -webkit-text-stroke: 1px #000;
 }
-/* Position the tab relative to the rectangle's actual top-left, sticking up
- * by its own height. We compute the rect's top via the same clamp/aspect as
- * the rectangle itself. */
 body.pj-route-page .pj-menu-tab { display: inline-block; }
-body.pj-route-page .pj-menu-tab {
-    /* Re-anchor: rect top = 50% - (rect height)/2. Rect height = width*(4/3).
-     * tab sits just above that top, by ~24px. */
-    top: calc(50% - (clamp(220px, 50vmin, 420px) * (4 / 3)) / 2 - 24px);
-}
 
 /* ============================================================
  * ENTER-CARD (home content) — fills the rectangle stage

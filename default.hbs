@@ -33,13 +33,10 @@
     {{navigation}}
 </div>
 
-{{!-- "menu" tab — visible on non-home routes only (see CSS). Clicking it
-     SPA-navigates back to /. --}}
-<a class="pj-menu-tab" href="{{@site.url}}" data-menu-tab>menu</a>
-
 {{!-- The rectangle. Holds either the enter-card (home) or page content
      (everywhere else). SPA swaps only the contents of [data-rect-stage]. --}}
 <main class="pj-rect" data-rect>
+    <a class="pj-menu-tab" href="{{@site.url}}" data-menu-tab>menu</a>
     <div class="pj-rect__stage" data-rect-stage data-route-template="{{@view}}">
         {{{body}}}
     </div>
@@ -241,7 +238,9 @@
   const scrollInd = document.querySelector('[data-scroll-ind]');
   let scrollTarget = null;
   function getScrollTarget() {
-    return document.querySelector('.pj-rect__stage > .pj-page, .pj-rect__stage > .pj-page-content');
+    // Only non-home routes have a scrollable stage.
+    if (document.body.classList.contains('pj-route-home')) return null;
+    return document.querySelector('[data-rect-stage]');
   }
   function updateScrollIndicator() {
     if (!scrollInd) return;
