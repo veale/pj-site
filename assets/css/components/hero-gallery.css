@@ -66,3 +66,21 @@
     opacity: 1 !important;
     visibility: visible !important;
 }
+
+/* Outline overlay — sits above the mirror so the white stroke draws fully
+ * on top of any image content that bleeds through the title window. */
+.title-outline-layer {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 120;
+    overflow: visible;
+}
+
+.title-outline-layer svg {
+    position: absolute;
+    top: 0;
+    left: 0;
+    transform-origin: 0 0;
+    will-change: transform;
+}

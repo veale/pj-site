@@ -97,7 +97,7 @@ a:not([class]) {
     font-weight: 400;
     fill: none;
     stroke: #fff;
-    stroke-width: 2;
+    stroke-width: 3;
     paint-order: stroke fill;
     vector-effect: non-scaling-stroke;
 }

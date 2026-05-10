@@ -91,12 +91,10 @@ async function buildTitleMask() {
     const fontDataUrl = await loadDisplayFontDataUrl();
 
     // Clone the live title SVG so glyph metrics match. Bake font-* attrs
-    // because the serialized SVG won't see the page's stylesheet.
-    //
-    // To keep the visible white outline at full thickness, shrink the mask
-    // inward by the stroke width: paint a black stroke on top of the white
-    // fill so the mirror only shows through the *interior* of each glyph,
-    // leaving the navbar's full stroke (both inner and outer halves) visible.
+    // because the serialized SVG won't see the page's stylesheet. The mask
+    // is a simple white-text-on-transparent — the visible outline is drawn
+    // on top by the title-outline-layer (a higher z-index sibling), so the
+    // mask doesn't need to be eroded.
     const cs = window.getComputedStyle(text);
     const clone = titleSvg.cloneNode(true);
     clone.removeAttribute('class');
@@ -105,11 +103,8 @@ async function buildTitleMask() {
     const t2 = clone.querySelector('text');
     t2.removeAttribute('class');
     t2.setAttribute('fill', 'white');
-    t2.setAttribute('stroke', 'black');
-    t2.setAttribute('stroke-width', '4'); // ≈ visible 2px stroke + a touch of headroom
-    t2.setAttribute('vector-effect', 'non-scaling-stroke');
-    t2.setAttribute('paint-order', 'fill stroke');
-    t2.setAttribute('stroke-linejoin', 'round');
+    t2.setAttribute('stroke', 'none');
+    t2.removeAttribute('vector-effect');
     t2.setAttribute('font-family', (cs.fontFamily || 'sans-serif').replace(/"/g, "'"));
     t2.setAttribute('font-weight', cs.fontWeight || '400');
     t2.setAttribute('font-size', String(parseFloat(cs.fontSize) || 160));
@@ -145,6 +140,32 @@ function imageMirror() {
     const layer = document.querySelector('.title-mask-layer');
     if (!layer) return;
     const titleSvg = document.querySelector('.gh-head-title-svg');
+    const outlineLayer = document.querySelector('.title-outline-layer');
+    let outlineSvg = null;
+
+    function ensureOutlineClone() {
+        if (!outlineLayer || !titleSvg) return;
+        if (outlineSvg && outlineSvg.isConnected) {
+            // Keep viewBox in sync if the source's was refit
+            const vb = titleSvg.getAttribute('viewBox');
+            if (vb && vb !== outlineSvg.getAttribute('viewBox')) {
+                outlineSvg.setAttribute('viewBox', vb);
+            }
+            return;
+        }
+        const fresh = titleSvg.cloneNode(true);
+        fresh.removeAttribute('id');
+        fresh.setAttribute('aria-hidden', 'true');
+        // Keep the same class so .gh-head-title-text styling (stroke etc.) applies.
+        outlineLayer.replaceChildren(fresh);
+        outlineSvg = fresh;
+    }
+    ensureOutlineClone();
+    document.addEventListener('hero-gallery:ready', ensureOutlineClone);
+    window.addEventListener('load', ensureOutlineClone);
+    if (document.fonts && document.fonts.ready) {
+        document.fonts.ready.then(ensureOutlineClone);
+    }
 
     const pairs = []; // { src, clone }
     const seen = new WeakSet();
@@ -193,6 +214,11 @@ function imageMirror() {
             if (tr.width > 0) {
                 layer.style.setProperty('--title-mask-pos', `${tr.left}px ${tr.top}px`);
                 layer.style.setProperty('--title-mask-size', `${tr.width}px ${tr.height}px`);
+                if (outlineSvg) {
+                    outlineSvg.style.width = `${tr.width}px`;
+                    outlineSvg.style.height = `${tr.height}px`;
+                    outlineSvg.style.transform = `translate3d(${tr.left}px, ${tr.top}px, 0)`;
+                }
             }
         }
         for (const { src, clone } of pairs) {
