@@ -331,6 +331,515 @@ a:not([class]) {
     display: none;
 }
 
+/* ----------------------------------------------------------
+ * Koenig content cards — restyled to the theme vocabulary:
+ *   orange page → white box (orange text) → hover invert
+ *   Display font: NaNHolo (headings only)
+ *   Body font: Space Grotesk
+ *   Links: orange-on-white box, hover bolds
+ * ---------------------------------------------------------- */
+
+:root {
+    --card-radius: 2px;
+    --card-bg: #fff;
+    --card-fg: var(--color-orange);
+    --card-bg-invert: var(--color-orange);
+    --card-fg-invert: #fff;
+}
+
+/* Captions (used by image, gallery, video, embed, etc.) */
+.gh-content figcaption,
+.gh-canvas figcaption {
+    padding: 0.6em 0 0;
+    color: #fff;
+    opacity: 0.85;
+    font-family: var(--font-sans-serif);
+    font-weight: 400;
+    font-size: 1.25rem;
+    line-height: 1.4;
+    text-align: center;
+}
+.gh-content figcaption strong,
+.gh-canvas figcaption strong { color: #fff; opacity: 1; }
+
+/* Inline code */
+.gh-canvas :not(pre) code {
+    border: none;
+    color: var(--card-fg);
+    background: var(--card-bg);
+    border-radius: var(--card-radius);
+    padding: 0.1em 0.4em;
+    font-family: var(--font-mono);
+    font-size: 0.92em;
+    font-weight: 500;
+}
+
+/* Code blocks */
+.gh-canvas > pre,
+.gh-content pre {
+    background: var(--card-bg);
+    color: var(--card-fg);
+    border-radius: var(--card-radius);
+    box-shadow: none;
+    border: none;
+    padding: 1.2em 1.4em;
+    font-family: var(--font-mono);
+    font-size: 1.35rem;
+    line-height: 1.5;
+    overflow: auto;
+}
+.gh-canvas > pre code,
+.gh-content pre code {
+    background: transparent;
+    color: inherit;
+    border: none;
+    padding: 0;
+    font-weight: inherit;
+}
+
+/* Horizontal rule */
+.gh-content hr,
+.gh-canvas > hr {
+    border: 0;
+    height: 2px;
+    background: #fff;
+    opacity: 0.7;
+    margin: 2em 0;
+}
+
+/* Image card */
+.kg-image-card img {
+    margin: auto;
+    display: block;
+    border-radius: var(--card-radius);
+}
+
+/* Gallery card — tighter grid, square corners, no gap weirdness */
+.kg-gallery-card {
+    margin: 1.6em 0;
+}
+.kg-gallery-container {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+}
+.kg-gallery-row {
+    display: flex;
+    gap: 0.6rem;
+}
+.kg-gallery-image {
+    flex: 1 1 0;
+    overflow: hidden;
+    border-radius: var(--card-radius);
+}
+.kg-gallery-image img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    margin: 0;
+}
+
+/* Embed card (YouTube, Vimeo, Twitter, etc.) */
+.kg-embed-card {
+    margin: 1.6em 0;
+    background: var(--card-bg);
+    border-radius: var(--card-radius);
+    overflow: hidden;
+}
+.kg-embed-card iframe {
+    display: block;
+    width: 100%;
+    border: 0;
+}
+
+/* Video card */
+.kg-video-card,
+.kg-video-container {
+    background: var(--card-bg);
+    border-radius: var(--card-radius);
+    overflow: hidden;
+}
+.kg-video-card video {
+    display: block;
+    width: 100%;
+    background: #000;
+}
+
+/* Audio card */
+.kg-audio-card {
+    background: var(--card-bg);
+    color: var(--card-fg);
+    border-radius: var(--card-radius);
+    border: none;
+    padding: 1rem 1.2rem;
+    margin: 1.6em 0;
+    font-family: var(--font-sans-serif);
+    transition: background 150ms ease, color 150ms ease;
+}
+.kg-audio-card:hover {
+    background: var(--card-bg-invert);
+    color: var(--card-fg-invert);
+}
+.kg-audio-card .kg-audio-title {
+    font-weight: 600;
+    font-size: 1.6rem;
+    margin: 0 0 0.4rem;
+    color: inherit;
+    font-family: var(--font-sans-serif);
+}
+.kg-audio-card audio {
+    width: 100%;
+    display: block;
+}
+.kg-audio-card .kg-audio-thumbnail,
+.kg-audio-card .kg-audio-thumbnail-placeholder {
+    background: transparent;
+    color: inherit;
+}
+
+/* File card — same vocabulary as bookmark */
+.kg-file-card {
+    margin: 1.6em 0;
+}
+.kg-file-card .kg-file-card-container,
+.kg-file-card a {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    background: var(--card-bg);
+    color: var(--card-fg) !important;
+    text-decoration: none !important;
+    padding: 1rem 1.2rem;
+    border-radius: var(--card-radius);
+    border: none !important;
+    box-shadow: none !important;
+    transition: background 150ms ease, color 150ms ease;
+}
+.kg-file-card a:hover,
+.kg-file-card .kg-file-card-container:hover {
+    background: var(--card-bg-invert);
+    color: var(--card-fg-invert) !important;
+}
+.kg-file-card .kg-file-card-title,
+.kg-file-card .kg-file-card-filename {
+    font-family: var(--font-sans-serif);
+    font-weight: 600;
+    color: inherit;
+}
+.kg-file-card .kg-file-card-caption,
+.kg-file-card .kg-file-card-metadata {
+    font-size: 1.2rem;
+    color: inherit;
+    opacity: 0.85;
+}
+
+/* Callout card */
+.kg-callout-card {
+    background: var(--card-bg);
+    color: var(--card-fg);
+    border-radius: var(--card-radius);
+    padding: 1.1em 1.4em;
+    margin: 1.6em 0;
+    display: flex;
+    gap: 0.8em;
+    border: none;
+    transition: background 150ms ease, color 150ms ease;
+}
+.kg-callout-card:hover {
+    background: var(--card-bg-invert);
+    color: var(--card-fg-invert);
+}
+.kg-callout-emoji {
+    font-size: 1.4em;
+    line-height: 1.2;
+    flex: 0 0 auto;
+}
+.kg-callout-text {
+    font-family: var(--font-sans-serif);
+    color: inherit;
+}
+.kg-callout-card[class*="grey"],
+.kg-callout-card[class*="blue"],
+.kg-callout-card[class*="green"],
+.kg-callout-card[class*="yellow"],
+.kg-callout-card[class*="red"],
+.kg-callout-card[class*="pink"],
+.kg-callout-card[class*="purple"],
+.kg-callout-card[class*="accent"] {
+    background: var(--card-bg);
+    color: var(--card-fg);
+}
+
+/* Toggle (accordion) card */
+.kg-toggle-card {
+    background: var(--card-bg);
+    color: var(--card-fg);
+    border-radius: var(--card-radius);
+    padding: 1em 1.2em;
+    margin: 1.6em 0;
+    border: none;
+    transition: background 150ms ease, color 150ms ease;
+}
+.kg-toggle-card:hover {
+    background: var(--card-bg-invert);
+    color: var(--card-fg-invert);
+}
+.kg-toggle-card .kg-toggle-heading,
+.kg-toggle-card .kg-toggle-heading-text {
+    font-family: var(--font-sans-serif);
+    font-weight: 600;
+    font-size: 1.6rem;
+    margin: 0;
+    color: inherit;
+}
+.kg-toggle-card .kg-toggle-content {
+    margin-top: 0.6em;
+    color: inherit;
+    font-family: var(--font-sans-serif);
+    font-size: 1.4rem;
+    line-height: 1.5;
+}
+.kg-toggle-card .kg-toggle-card-icon path,
+.kg-toggle-card svg {
+    stroke: currentColor;
+    fill: currentColor;
+}
+
+/* Header card (large heading section, possibly with bg image) */
+.kg-header-card {
+    padding: 4vmin 6vmin;
+    border-radius: var(--card-radius);
+    margin: 1.6em 0;
+    background: var(--card-bg);
+    color: var(--card-fg);
+    text-align: center;
+}
+.kg-header-card h2,
+.kg-header-card h3,
+.kg-header-card .kg-header-card-heading {
+    color: inherit;
+    margin: 0;
+    font-family: var(--font-display);
+}
+.kg-header-card .kg-header-card-subheading,
+.kg-header-card p {
+    color: inherit;
+    font-family: var(--font-sans-serif);
+    margin: 0.4em 0 0;
+}
+.kg-header-card .kg-header-card-button,
+.kg-header-card a.kg-header-card-button {
+    display: inline-block;
+    margin-top: 1em;
+    background: var(--color-orange);
+    color: #fff !important;
+    padding: 0.6em 1.2em;
+    border-radius: var(--card-radius);
+    text-decoration: none !important;
+    font-family: var(--font-sans-serif);
+    font-weight: 600;
+}
+
+/* Button card (CTA) */
+.kg-button-card {
+    margin: 1.6em 0;
+    text-align: center;
+}
+.kg-btn,
+.kg-button-card a {
+    display: inline-block;
+    background: var(--card-bg);
+    color: var(--card-fg) !important;
+    padding: 0.7em 1.4em;
+    border-radius: var(--card-radius);
+    font-family: var(--font-sans-serif);
+    font-weight: 600;
+    text-decoration: none !important;
+    border: none !important;
+    transition: background 150ms ease, color 150ms ease, font-weight 120ms ease;
+}
+.kg-btn:hover,
+.kg-button-card a:hover {
+    background: var(--card-bg-invert);
+    color: var(--card-fg-invert) !important;
+    font-weight: 700;
+}
+.kg-button-card.kg-align-left { text-align: left; }
+.kg-button-card.kg-align-center { text-align: center; }
+
+/* Product card — same skeleton as bookmark */
+.kg-product-card {
+    margin: 1.6em 0;
+}
+.kg-product-card-container {
+    background: var(--card-bg);
+    color: var(--card-fg);
+    border-radius: var(--card-radius);
+    border: none !important;
+    padding: 1.4rem;
+    transition: background 150ms ease, color 150ms ease;
+    display: flex;
+    gap: 1rem;
+    flex-direction: column;
+}
+.kg-product-card-container:hover {
+    background: var(--card-bg-invert);
+    color: var(--card-fg-invert);
+}
+.kg-product-card-image {
+    border-radius: var(--card-radius);
+    overflow: hidden;
+}
+.kg-product-card-image img {
+    width: 100%;
+    height: auto;
+    display: block;
+    margin: 0;
+}
+.kg-product-card-title-container,
+.kg-product-card-title {
+    color: inherit;
+    font-family: var(--font-sans-serif);
+    font-weight: 600;
+    font-size: 1.9rem;
+    line-height: 1.2;
+    margin: 0;
+}
+.kg-product-card-description,
+.kg-product-card-description p {
+    color: inherit;
+    font-family: var(--font-sans-serif);
+    font-size: 1.4rem;
+    margin: 0.4em 0 0;
+}
+.kg-product-card-button {
+    margin-top: 0.6em;
+    align-self: flex-start;
+    background: var(--color-orange);
+    color: #fff !important;
+    padding: 0.5em 1em;
+    border-radius: var(--card-radius);
+    text-decoration: none;
+    font-weight: 600;
+}
+.kg-product-card-container:hover .kg-product-card-button {
+    background: #fff;
+    color: var(--color-orange) !important;
+}
+
+/* Signup card */
+.kg-signup-card {
+    background: var(--card-bg);
+    color: var(--card-fg);
+    border-radius: var(--card-radius);
+    padding: 2em 2em;
+    margin: 1.6em 0;
+    border: none;
+}
+.kg-signup-card h2,
+.kg-signup-card h3,
+.kg-signup-card .kg-signup-card-heading {
+    color: inherit;
+    margin: 0;
+    font-family: var(--font-display);
+}
+.kg-signup-card p,
+.kg-signup-card .kg-signup-card-subheading {
+    color: inherit;
+    font-family: var(--font-sans-serif);
+    margin-top: 0.4em;
+}
+.kg-signup-card form input[type="email"] {
+    background: rgba(255,255,255,0.4);
+    border: 1px solid var(--color-orange);
+    color: var(--color-orange);
+    padding: 0.6em 0.8em;
+    border-radius: var(--card-radius);
+    font-family: var(--font-sans-serif);
+}
+.kg-signup-card form input[type="email"]::placeholder {
+    color: var(--color-orange);
+    opacity: 0.6;
+}
+.kg-signup-card form button,
+.kg-signup-card .kg-signup-card-button {
+    background: var(--color-orange);
+    color: #fff !important;
+    padding: 0.6em 1.2em;
+    border-radius: var(--card-radius);
+    border: none;
+    font-family: var(--font-sans-serif);
+    font-weight: 600;
+    cursor: pointer;
+}
+
+/* Tables — white rows, orange text, sticky header row */
+.gh-content table,
+.gh-canvas > table {
+    background: var(--card-bg);
+    color: var(--card-fg);
+    border-collapse: separate;
+    border-spacing: 0;
+    width: 100%;
+    border-radius: var(--card-radius);
+    overflow: hidden;
+    margin: 1.6em 0;
+    font-family: var(--font-sans-serif);
+}
+.gh-content th,
+.gh-canvas > table th {
+    background: var(--color-orange);
+    color: #fff;
+    text-align: left;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    font-size: 0.8em;
+    padding: 0.5em 0.8em;
+    border: none;
+}
+.gh-content td,
+.gh-canvas > table td {
+    padding: 0.5em 0.8em;
+    border: none;
+    box-shadow: none;
+    color: inherit;
+}
+.gh-content tbody tr:nth-child(2n + 1),
+.gh-canvas > table tbody tr:nth-child(2n + 1) {
+    background: rgba(255, 103, 32, 0.06);
+}
+.gh-content tbody tr:nth-child(2n + 2),
+.gh-canvas > table tbody tr:nth-child(2n + 2) {
+    background: transparent;
+}
+.gh-content tbody tr:last-child,
+.gh-canvas > table tbody tr:last-child {
+    border-bottom: none;
+}
+
+/* Definition lists */
+.gh-canvas > dl dt,
+.gh-content dl dt {
+    font-weight: 600;
+    color: #fff;
+    margin-top: 0.6em;
+}
+.gh-canvas > dl dd,
+.gh-content dl dd {
+    margin-left: 1em;
+    color: #fff;
+}
+
+/* Headers/headings inside content keep display font */
+.gh-content h1, .gh-content h2, .gh-content h3,
+.gh-content h4, .gh-content h5, .gh-content h6,
+.gh-canvas h1, .gh-canvas h2, .gh-canvas h3,
+.gh-canvas h4, .gh-canvas h5, .gh-canvas h6 {
+    color: #fff;
+    font-family: var(--font-display);
+}
+
 /* Footer — tight notice block fed by Ghost page slug "footer-notice" */
 .gh-foot {
     padding: 0;

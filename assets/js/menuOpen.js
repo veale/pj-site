@@ -136,6 +136,7 @@ async function buildTitleMask() {
 function imageMirror() {
     const layer = document.querySelector('.title-mask-layer');
     if (!layer) return;
+    const titleSvg = document.querySelector('.gh-head-title-svg');
 
     const pairs = []; // { src, clone }
     const seen = new WeakSet();
@@ -175,15 +176,26 @@ function imageMirror() {
 
     let raf = false;
     function tick() {
+        // Re-read the title's current screen rect every frame and push to
+        // CSS variables. iOS Safari's rubber-band settle and URL-bar
+        // show/hide shift fixed-position layers ~20px after a scroll ends
+        // without firing resize, so we need to track on every frame.
+        if (titleSvg) {
+            const tr = titleSvg.getBoundingClientRect();
+            if (tr.width > 0) {
+                layer.style.setProperty('--title-mask-pos', `${tr.left}px ${tr.top}px`);
+                layer.style.setProperty('--title-mask-size', `${tr.width}px ${tr.height}px`);
+            }
+        }
         for (const { src, clone } of pairs) {
             if (!src.isConnected) {
-                clone.style.transform = 'translate(-99999px,-99999px)';
+                clone.style.transform = 'translate3d(-99999px,-99999px,0)';
                 continue;
             }
             const r = src.getBoundingClientRect();
             clone.style.width = `${r.width}px`;
             clone.style.height = `${r.height}px`;
-            clone.style.transform = `translate(${r.left}px, ${r.top}px)`;
+            clone.style.transform = `translate3d(${r.left}px, ${r.top}px, 0)`;
         }
         raf = false;
     }
@@ -200,7 +212,21 @@ function imageMirror() {
     // Late-loading content (hero gallery, lazy images, etc.)
     document.addEventListener('hero-gallery:ready', () => { rescan(); schedule(); });
     window.addEventListener('load', () => { rescan(); schedule(); });
-    window.addEventListener('scroll', schedule, { passive: true });
+
+    // iOS Safari rubber-band/URL-bar settle: scroll events stop firing while
+    // the viewport is still shifting. Run a short trailing burst after the
+    // last scroll event to catch the final position.
+    let settleTimer = null;
+    const burstAfterScroll = () => {
+        if (settleTimer) clearTimeout(settleTimer);
+        settleTimer = setTimeout(() => {
+            schedule();
+            requestAnimationFrame(schedule);
+            setTimeout(schedule, 250);
+            setTimeout(schedule, 600);
+        }, 50);
+    };
+    window.addEventListener('scroll', () => { schedule(); burstAfterScroll(); }, { passive: true });
     window.addEventListener('resize', schedule);
 
     // Keep clone src up-to-date if the source image's src changes after load.
