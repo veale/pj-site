@@ -270,9 +270,21 @@ a:not([class]) {
 .gh-foot-notice :is(p, ul, ol):first-child { margin-top: 0; }
 .gh-foot-notice :is(p, ul, ol):last-child  { margin-bottom: 0; }
 
-.gh-foot-notice a {
-    color: inherit;
+.gh-foot-notice a,
+.gh-foot-notice a:not([class]) {
+    color: var(--color-orange);
+    background: #fff;
+    padding: 0.05em 0.35em;
+    border-radius: 2px;
     text-decoration: underline;
+    text-underline-offset: 0.15em;
+    box-decoration-break: clone;
+    -webkit-box-decoration-break: clone;
+    transition: font-weight 120ms ease;
+}
+
+.gh-foot-notice a:hover {
+    font-weight: 700;
 }
 
 /* Blockquote — italic orange on white, like a fattened link box */

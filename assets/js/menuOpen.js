@@ -30,7 +30,53 @@ function fitTitle() {
     window.addEventListener('scroll', buildHeadMask, { passive: true });
 }
 
-function buildHeadMask() {
+let _displayFontPromise = null;
+
+function findFontUrl(familyNeedle) {
+    const needle = familyNeedle.toLowerCase();
+    for (const sheet of document.styleSheets) {
+        let rules;
+        try { rules = sheet.cssRules; } catch (e) { continue; }
+        if (!rules) continue;
+        for (const rule of rules) {
+            if (!(rule instanceof CSSFontFaceRule)) continue;
+            const f = (rule.style.getPropertyValue('font-family') || '')
+                .replace(/['"]/g, '').trim().toLowerCase();
+            if (f !== needle) continue;
+            const src = rule.style.getPropertyValue('src') || '';
+            const m = src.match(/url\(\s*["']?([^)"']+)["']?\s*\)/);
+            if (m) {
+                try { return new URL(m[1], sheet.href || document.baseURI).href; }
+                catch (e) { return m[1]; }
+            }
+        }
+    }
+    return null;
+}
+
+function loadDisplayFontDataUrl() {
+    if (_displayFontPromise) return _displayFontPromise;
+    _displayFontPromise = (async () => {
+        const url = findFontUrl('NaNHoloGigawide Ultra');
+        if (!url) return null;
+        try {
+            const r = await fetch(url);
+            if (!r.ok) return null;
+            const blob = await r.blob();
+            return await new Promise((resolve, reject) => {
+                const fr = new FileReader();
+                fr.onload = () => resolve(fr.result);
+                fr.onerror = reject;
+                fr.readAsDataURL(blob);
+            });
+        } catch (e) {
+            return null;
+        }
+    })();
+    return _displayFontPromise;
+}
+
+async function buildHeadMask() {
     const head = document.getElementById('gh-head');
     if (!head) return;
     const titleSvg = document.querySelector('.gh-head-title-svg');
@@ -41,6 +87,11 @@ function buildHeadMask() {
     const hr = head.getBoundingClientRect();
     const tr = titleSvg.getBoundingClientRect();
     if (!hr.width || !tr.width) return;
+
+    // SVG-as-data-URL renders in its own document context and cannot see the
+    // page's @font-face rules. Fetch the WOFF2, base64-embed it inside the
+    // SVG via <style>@font-face</style> so glyph metrics match the live title.
+    const fontDataUrl = await loadDisplayFontDataUrl();
 
     // Clone the visible title SVG so the mask uses identical glyph metrics
     // and viewBox positioning. Strip the <title>, set fill black + remove
@@ -75,12 +126,16 @@ function buildHeadMask() {
     const W = Math.round(hr.width);
     const H = Math.round(hr.height);
 
+    const fontStyle = fontDataUrl
+        ? `<style>@font-face{font-family:'NaNHoloGigawide Ultra';src:url('${fontDataUrl}') format('woff2');font-weight:400;font-style:normal;}</style>`
+        : '';
+
     // Use an SVG <mask> so the resulting image has true alpha=0 in text shape
     // and alpha=1 elsewhere — works under either CSS mask-mode (alpha or
     // luminance), so we don't depend on browser defaults.
     const outer =
         `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">` +
-        `<defs><mask id="hm" maskUnits="userSpaceOnUse" x="0" y="0" width="${W}" height="${H}">` +
+        `<defs>${fontStyle}<mask id="hm" maskUnits="userSpaceOnUse" x="0" y="0" width="${W}" height="${H}">` +
         `<rect width="100%" height="100%" fill="white"/>${innerStr}</mask></defs>` +
         `<rect width="100%" height="100%" fill="white" mask="url(#hm)"/></svg>`;
 
