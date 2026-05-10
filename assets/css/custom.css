@@ -97,9 +97,12 @@ a:not([class]) {
     font-weight: 400;
     fill: none;
     stroke: #fff;
-    stroke-width: 3;
+    /* stroke-width is set in JS in user-space units to render at an exact
+     * screen-pixel thickness (cross-browser consistent — non-scaling-stroke
+     * varies between Chrome and Firefox in sub-pixel rasterization). */
+    stroke-width: 2;
     paint-order: stroke fill;
-    vector-effect: non-scaling-stroke;
+    stroke-linejoin: round;
 }
 
 .gh-head-nav {

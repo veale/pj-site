@@ -13,11 +13,20 @@ function fitTitle() {
     const text = svg.querySelector('text');
     if (!text) return;
 
+    const TARGET_STROKE_PX = 3; // visible outline thickness in CSS pixels
     const measureAndMask = () => {
         try {
             const bbox = text.getBBox();
             if (bbox.width > 0 && bbox.height > 0) {
                 svg.setAttribute('viewBox', `${bbox.x} ${bbox.y} ${bbox.width} ${bbox.height}`);
+            }
+            // Compute the stroke-width in user-space units that renders at
+            // exactly TARGET_STROKE_PX on screen. This sidesteps the
+            // browser-specific rounding of `vector-effect: non-scaling-stroke`.
+            const screenW = svg.getBoundingClientRect().width;
+            if (screenW > 0 && bbox.width > 0) {
+                const scale = screenW / bbox.width;
+                text.setAttribute('stroke-width', String(TARGET_STROKE_PX / scale));
             }
         } catch (e) { /* ignore */ }
         buildTitleMask();
