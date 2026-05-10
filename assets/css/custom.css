@@ -61,8 +61,11 @@ a:not([class]) {
 /* Header — full-bleed outline title + always-visible nav */
 
 .gh-head {
+    position: sticky;
+    top: 0;
+    z-index: 100;
     padding: 0;
-    background: transparent;
+    background: #FF6720;
     color: #fff;
     font-family: var(--font-heading);
     font-size: 1.6rem;

@@ -16,18 +16,18 @@
 }
 
 .hero-gallery__item {
-    margin: 30vh auto;
+    margin: 12vh auto;
     width: min(80%, 1100px);
     display: flex;
     justify-content: center;
 }
 
 .hero-gallery__item:first-child {
-    margin-top: 12vh;
+    margin-top: 6vh;
 }
 
 .hero-gallery__item:last-child {
-    margin-bottom: 20vh;
+    margin-bottom: 10vh;
 }
 
 .hero-gallery__item img {

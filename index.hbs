@@ -94,8 +94,8 @@ void main() {
   vec2 uv = (gl_FragCoord.xy - offset) / resolution;
   vec2 uvr = uv, uvg = uv, uvb = uv;
 
-  float r = rand(vec2(floor(time * 43.), id));
-  if (r > 0.8) {
+  float r = rand(vec2(floor(time * 12.), id));
+  if (r > 0.93) {
     float y = sin(floor(uv.y / 0.07)) + sin(floor(uv.y / 0.003 + time));
     float f = rand(vec2(y, floor(time * 5.0) + id)) * 2. - 1.;
     uvr.x += f * 0.1;
@@ -103,8 +103,8 @@ void main() {
     uvb.x += f * 0.3;
   }
 
-  float r2 = rand(vec2(floor(time * 37.), id + 10.));
-  if (r2 > 0.9) {
+  float r2 = rand(vec2(floor(time * 9.), id + 10.));
+  if (r2 > 0.96) {
     uvr.x += sin(uv.y * 7. + time + id + 1.) * 0.03;
     uvg.x += sin(uv.y * 5. + time + id + 2.) * 0.03;
     uvb.x += sin(uv.y * 3. + time + id + 3.) * 0.03;
