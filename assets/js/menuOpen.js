@@ -40,6 +40,7 @@ function fitTitle() {
     window.addEventListener('resize', measureAndMask);
 }
 
+let _displayFontDataUrl = null;
 let _displayFontPromise = null;
 
 function findFontUrl(familyNeedle) {
@@ -65,6 +66,11 @@ function findFontUrl(familyNeedle) {
 }
 
 function loadDisplayFontDataUrl() {
+    // Cache only successful results. If the stylesheet hasn't been parsed
+    // yet, findFontUrl returns null on the first call; we must allow later
+    // calls (after fonts.ready / window.load) to retry rather than caching
+    // the failure forever.
+    if (_displayFontDataUrl) return Promise.resolve(_displayFontDataUrl);
     if (_displayFontPromise) return _displayFontPromise;
     _displayFontPromise = (async () => {
         const url = findFontUrl('NaNHoloGigawide Ultra');
@@ -73,16 +79,20 @@ function loadDisplayFontDataUrl() {
             const r = await fetch(url);
             if (!r.ok) return null;
             const blob = await r.blob();
-            return await new Promise((resolve, reject) => {
+            const dataUrl = await new Promise((resolve, reject) => {
                 const fr = new FileReader();
                 fr.onload = () => resolve(fr.result);
                 fr.onerror = reject;
                 fr.readAsDataURL(blob);
             });
+            _displayFontDataUrl = dataUrl;
+            return dataUrl;
         } catch (e) {
             return null;
         }
-    })();
+    })().finally(() => {
+        if (!_displayFontDataUrl) _displayFontPromise = null;
+    });
     return _displayFontPromise;
 }
 
