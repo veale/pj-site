@@ -1120,6 +1120,7 @@ body { background: #0a0a0a; }
 }
 .pj-rect__stage {
     position: relative;
+    z-index: 2; /* paints OVER the menu tab so the tab can hide behind it */
     flex: 1 1 auto;
     min-width: 0;
     min-height: 0;
@@ -1145,7 +1146,8 @@ body { background: #0a0a0a; }
  * outlined tab. Visible only on non-home routes. */
 .pj-menu-tab {
     position: absolute;
-    z-index: 3;
+    z-index: 1; /* behind .pj-rect__stage — only the portion above the rect's
+                   top edge is visible; any overlap hides behind the white box */
     top: -22px;
     right: 0;
     background: #000;
@@ -1281,7 +1283,20 @@ body.pj-route-page .pj-rect__stage {
     hyphens: auto;
 }
 body.pj-route-page .pj-rect__stage::-webkit-scrollbar { display: none; }
-body.pj-route-page .pj-rect__stage > * { padding: 8px 6px; }
+body.pj-route-page .pj-rect__stage {
+    padding: 6px 4px 8px;
+}
+body.pj-route-page .pj-rect__stage > * {
+    padding: 0;
+    margin: 0;
+    max-width: 100%;
+}
+body.pj-route-page .pj-rect__stage > * > * {
+    padding: 0;
+    margin-left: 0;
+    margin-right: 0;
+    max-width: 100%;
+}
 
 /* Body links — flat black, underlined. On hover they become a black tag
  * with white text (instead of a white outline, which would disappear into
@@ -1378,10 +1393,15 @@ body.pj-route-page .pj-rect__stage hr {
     border-top: 1px solid #000;
     margin: 0.7em 0;
 }
+/* Lists: bullet sits at the same x-position as paragraph text, not indented. */
 body.pj-route-page .pj-rect__stage ul,
 body.pj-route-page .pj-rect__stage ol {
     margin: 0 0 0.55em;
-    padding-left: 1.1em;
+    padding-left: 0;
+    list-style-position: inside;
+}
+body.pj-route-page .pj-rect__stage li {
+    padding-left: 0;
 }
 
 /* Blockquote — italic, slightly smaller, vertical black rule on the left. */
@@ -1399,23 +1419,27 @@ body.pj-route-page .pj-rect__stage blockquote p { margin: 0 0 0.4em; }
 body.pj-route-page .pj-rect__stage blockquote p:last-child { margin: 0; }
 
 /* News listing — bullet list. Each row: title (bold link), then date.
- * Wraps naturally when titles are long. */
+ * Strictly one card per line; long titles wrap. */
 body.pj-route-page .gh-postfeed {
+    display: block !important;
     list-style: none;
     margin: 0;
     padding: 0;
+    grid-template-columns: none !important;
 }
 body.pj-route-page .gh-card {
-    display: block;
+    display: block !important;
     background: none !important;
     color: #000 !important;
-    margin: 0 0 0.3em;
-    padding: 0 0 0 12px;
-    border: 0;
+    margin: 0 0 0.25em !important;
+    padding: 0 0 0 0.9em !important;
+    border: 0 !important;
     position: relative;
+    aspect-ratio: auto !important;
+    width: auto !important;
 }
 body.pj-route-page .gh-card::before {
-    content: "\2022"; /* bullet */
+    content: "\2022";
     position: absolute;
     left: 0;
     top: 0;
@@ -1423,45 +1447,87 @@ body.pj-route-page .gh-card::before {
     font-weight: 700;
 }
 body.pj-route-page .gh-card-link {
-    display: inline;
-    color: #000;
-    text-decoration: none;
+    display: inline !important;
+    flex-direction: row !important;
+    color: #000 !important;
+    text-decoration: none !important;
     font-weight: 700;
-    background: none;
-    padding: 0;
+    background: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
 }
-body.pj-route-page .gh-card-link:hover {
-    color: #fff;
-    background: #000;
-    padding: 0 0.18em;
-    margin: 0 -0.18em;
-    -webkit-text-stroke: 0;
+body.pj-route-page .gh-card-link:hover,
+body.pj-route-page .gh-card-link:hover .gh-card-title,
+body.pj-route-page .gh-card-link:hover .gh-card-date,
+body.pj-route-page .gh-card-link:focus-visible,
+body.pj-route-page .gh-card-link:focus-visible .gh-card-title,
+body.pj-route-page .gh-card-link:focus-visible .gh-card-date {
+    color: #fff !important;
+    background: #000 !important;
+    -webkit-text-stroke: 0 !important;
+    opacity: 1 !important;
+}
+body.pj-route-page .gh-card-link:hover,
+body.pj-route-page .gh-card-link:focus-visible {
+    padding: 0 0.18em !important;
+    margin: 0 -0.18em !important;
 }
 body.pj-route-page .gh-card-title {
-    display: inline;
-    font: inherit;
-    font-weight: 700;
-    text-transform: none;
-    -webkit-text-stroke: 0;
-    margin: 0;
+    display: inline !important;
+    font: inherit !important;
+    font-weight: 700 !important;
+    text-transform: none !important;
+    -webkit-text-stroke: 0 !important;
+    margin: 0 !important;
+    color: inherit !important;
+    aspect-ratio: auto !important;
 }
-body.pj-route-page .gh-card-excerpt { display: none; }
+body.pj-route-page .gh-card-image,
+body.pj-route-page .gh-card-excerpt,
+body.pj-route-page .gh-card-meta {
+    display: none !important;
+}
 body.pj-route-page .gh-card-date {
-    display: inline;
-    background: none;
-    color: #000;
-    padding: 0 0 0 0.4em;
-    margin: 0;
-    font: inherit;
-    font-weight: 400;
-    font-style: italic;
+    display: inline !important;
+    background: none !important;
+    color: inherit !important;
+    padding: 0 0 0 0.4em !important;
+    margin: 0 !important;
+    font: inherit !important;
+    font-weight: 400 !important;
+    font-style: italic !important;
     opacity: 0.7;
+    letter-spacing: 0 !important;
 }
 
-/* Compact article footer, header. */
-body.pj-route-page .gh-header { padding: 0 0 0.4em; text-align: left; }
+/* Page / post / article headers: always anchored top-left, no centering, no
+ * giant vertical padding. */
+body.pj-route-page .gh-page-head,
+body.pj-route-page .gh-header,
+body.pj-route-page .gh-page-image {
+    margin: 0 !important;
+    padding: 0 0 0.3em !important;
+    text-align: left !important;
+}
+body.pj-route-page .gh-page-head h1,
+body.pj-route-page .gh-page-head p,
+body.pj-route-page .gh-header h1,
+body.pj-route-page .gh-header .gh-title {
+    text-align: left !important;
+    margin: 0 0 0.2em !important;
+    max-width: 100% !important;
+    padding: 0 !important;
+}
+body.pj-route-page .gh-page,
+body.pj-route-page .gh-article,
 body.pj-route-page .gh-canvas,
-body.pj-route-page .gh-container { max-width: 100%; padding: 0; margin: 0; }
+body.pj-route-page .gh-container,
+body.pj-route-page .gh-content {
+    max-width: 100% !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    text-align: left !important;
+}
 body.pj-route-page .gh-feature-image { margin: 0.4em 0; }
 body.pj-route-page .gh-post-date {
     display: inline-block; background: none; color: #000;
