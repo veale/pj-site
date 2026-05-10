@@ -40,6 +40,10 @@ html,
     background: #FF6720;
 }
 
+html, body {
+    overscroll-behavior-y: none;
+}
+
 .gh-main {
     flex: 1 0 auto;
     display: flex;
