@@ -371,11 +371,12 @@
     pixelateAndReveal();
   });
 
-  // Size menu items so they fill the rectangle as tightly as possible
-  // while keeping all items visible (no horizontal overflow).
+  // Largest font where no item wraps (scrollWidth > innerW) and the stacked
+  // line-boxes of all items fit vertically. Binary-searched so the menu fills
+  // the rectangle as fully as possible without overflowing in either axis.
   function fitMenu() {
     if (menuEl.hidden) return;
-    const items = menuEl.querySelectorAll('.enter-card__menu-item');
+    const items = Array.from(menuEl.querySelectorAll('.enter-card__menu-item'));
     if (!items.length) return;
     const cs = getComputedStyle(menuEl);
     const padTop = parseFloat(cs.paddingTop) || 0;
@@ -384,20 +385,30 @@
     const padRight = parseFloat(cs.paddingRight) || 0;
     const innerH = menuEl.clientHeight - padTop - padBottom;
     const innerW = menuEl.clientWidth - padLeft - padRight;
-    // Largest size such that N * size fits vertically with tight line-height.
-    let size = Math.floor(innerH / items.length);
-    items.forEach((el) => { el.style.fontSize = size + 'px'; });
-    // Shrink to fit horizontally.
-    let safety = 60;
-    while (safety-- > 0) {
-      let overflow = false;
-      items.forEach((el) => {
-        if (el.scrollWidth > innerW + 1) overflow = true;
-      });
-      if (!overflow) break;
-      size = Math.max(6, Math.floor(size * 0.94));
-      items.forEach((el) => { el.style.fontSize = size + 'px'; });
+    if (innerH <= 0 || innerW <= 0) return;
+
+    function setSize(px) {
+      for (const el of items) el.style.fontSize = px + 'px';
     }
+    function fits(px) {
+      setSize(px);
+      let total = 0;
+      for (const el of items) {
+        if (el.scrollWidth > innerW + 0.5) return false;
+        total += el.offsetHeight;
+        if (total > innerH + 0.5) return false;
+      }
+      return true;
+    }
+
+    let lo = 4;
+    let hi = Math.max(8, innerH);
+    if (!fits(lo)) { setSize(lo); return; }
+    for (let i = 0; i < 24; i++) {
+      const mid = (lo + hi) / 2;
+      if (fits(mid)) lo = mid; else hi = mid;
+    }
+    setSize(Math.floor(lo));
   }
   const fitObserver = new ResizeObserver(fitMenu);
   fitObserver.observe(menuEl);
@@ -523,7 +534,7 @@ body.home-template .title-outline-layer {
     display: flex;
     flex-direction: column;
     align-items: stretch;
-    justify-content: center;
+    justify-content: space-between;
     opacity: 0;
     transition: opacity 260ms ease;
     padding: 2% 4%;
@@ -539,13 +550,14 @@ body.home-template .title-outline-layer {
     font-weight: 900;
     text-decoration: none;
     text-transform: lowercase;
-    line-height: 0.95;
+    line-height: 1;
     color: transparent;
     -webkit-text-stroke: 1px #000;
     transition: color 140ms ease, -webkit-text-stroke-width 140ms ease;
     white-space: nowrap;
     margin: 0;
     padding: 0;
+    flex: 0 0 auto;
 }
 .enter-card__menu-item:hover {
     color: #000;
