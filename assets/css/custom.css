@@ -1058,3 +1058,391 @@ a:not([class]) {
     background: #fff;
     color: var(--color-orange);
 }
+
+
+/* ============================================================
+ * PJ SHELL — pixel-zone bg, rectangle, menu tab, scroll indicator
+ * ============================================================ */
+
+html, body {
+    overflow: hidden;
+    height: 100%;
+}
+body { background: #0a0a0a; }
+
+/* Hide the global Ghost header on every page — navigation lives inside the
+ * rectangle's menu now. */
+#gh-head, .gh-foot { display: none !important; }
+.gh-viewport, .gh-main { display: contents; }
+
+/* Hide the legacy hero-gallery title-mask layers everywhere. */
+.title-mask-layer, .title-outline-layer { display: none !important; }
+
+/* Persistent pixel-zone background. */
+.pj-bg {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    background: #0a0a0a;
+    overflow: hidden;
+}
+.pj-bg__image {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center center;
+    display: block;
+    z-index: 0;
+    user-select: none;
+    -webkit-user-drag: none;
+}
+.pj-bg__canvas {
+    position: absolute;
+    inset: 0;
+    display: block;
+    z-index: 1;
+}
+
+/* The rectangle — centered on screen, holds the swappable stage. */
+.pj-rect {
+    position: fixed;
+    z-index: 2;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: clamp(220px, 50vmin, 420px);
+    aspect-ratio: 3 / 4;
+    display: flex;
+    align-items: stretch;
+}
+.pj-rect__stage {
+    position: relative;
+    flex: 1 1 auto;
+    min-width: 0;
+    min-height: 0;
+    overflow: hidden;
+}
+
+/* Scroll indicator — a small white square that protrudes from the rect's
+ * right edge and tracks the inner scroll position. */
+.pj-scroll-indicator {
+    position: absolute;
+    top: 0;
+    right: -6px;
+    width: 10px;
+    height: 10px;
+    background: #fff;
+    z-index: 5;
+    pointer-events: none;
+    display: none;
+}
+
+/* "menu" tab — a small white tab popping up above the top-left of the rect.
+ * Visible only on non-home routes. */
+.pj-menu-tab {
+    position: fixed;
+    z-index: 3;
+    top: calc(50% - 50vmin * 0.5 * (4/3) - 28px);
+    left: calc(50% - clamp(220px, 50vmin, 420px) / 2);
+    background: #fff;
+    color: #000;
+    font-family: "NaNHoloGigawide Ultra", var(--font-sans-serif);
+    font-weight: 900;
+    text-transform: lowercase;
+    text-decoration: none;
+    padding: 6px 14px 4px;
+    line-height: 1;
+    font-size: 14px;
+    letter-spacing: 0.02em;
+    pointer-events: auto;
+    display: none;
+}
+.pj-menu-tab:hover {
+    color: transparent;
+    -webkit-text-stroke: 1px #000;
+}
+/* Position the tab relative to the rectangle's actual top-left, sticking up
+ * by its own height. We compute the rect's top via the same clamp/aspect as
+ * the rectangle itself. */
+body.pj-route-page .pj-menu-tab { display: inline-block; }
+body.pj-route-page .pj-menu-tab {
+    /* Re-anchor: rect top = 50% - (rect height)/2. Rect height = width*(4/3).
+     * tab sits just above that top, by ~24px. */
+    top: calc(50% - (clamp(220px, 50vmin, 420px) * (4 / 3)) / 2 - 24px);
+}
+
+/* ============================================================
+ * ENTER-CARD (home content) — fills the rectangle stage
+ * ============================================================ */
+
+.pj-page-home {
+    position: absolute;
+    inset: 0;
+    display: flex;
+}
+.enter-card {
+    position: relative;
+    flex: 1 1 auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    visibility: hidden;
+}
+.enter-card.enter-card--ready { visibility: visible; }
+
+.enter-card__menu {
+    position: absolute;
+    inset: 0;
+    background: #fff;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: space-between;
+    padding: 2% 4%;
+    gap: 0;
+    z-index: 1;
+}
+.enter-card__photo {
+    position: absolute;
+    inset: 0;
+    background-color: #FF6720;
+    z-index: 2;
+}
+.enter-card__pixel {
+    position: absolute;
+    inset: 0;
+    display: block;
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
+    z-index: 3;
+}
+.enter-card__pixel[hidden] { display: none !important; }
+.enter-card__link {
+    position: relative;
+    z-index: 4;
+    font-family: "NaNHoloGigawide Ultra", var(--font-sans-serif);
+    font-weight: 900;
+    color: #fff;
+    text-decoration: none;
+    text-transform: lowercase;
+    font-size: clamp(2.2rem, 6vmin, 5.2rem);
+    letter-spacing: 0.02em;
+    padding: 0.3em 0.6em;
+    -webkit-text-stroke: 0 #fff;
+    transition: color 120ms ease, -webkit-text-stroke-width 120ms ease;
+}
+.enter-card__link:hover,
+.enter-card__link:active {
+    color: transparent;
+    -webkit-text-stroke-width: 2px;
+}
+.enter-card--transitioning .enter-card__link { display: none; }
+.enter-card .enter-card__menu-item {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    font-family: "NaNHoloGigawide Ultra", var(--font-sans-serif);
+    font-weight: 900;
+    font-style: normal;
+    font-stretch: normal;
+    text-decoration: none;
+    text-transform: lowercase;
+    letter-spacing: 0;
+    line-height: 0.9;
+    color: transparent;
+    -webkit-text-stroke: 1px #000;
+    transition: color 140ms ease, -webkit-text-stroke-width 140ms ease;
+    white-space: nowrap;
+    margin: 0;
+    padding: 0;
+    flex: 0 0 auto;
+}
+.enter-card .enter-card__menu-item:hover {
+    color: #000;
+    -webkit-text-stroke-width: 0;
+}
+
+/* ============================================================
+ * COMPACT MODE — every non-home page renders inside the rectangle
+ * ============================================================ */
+
+body.pj-route-page .pj-rect__stage {
+    background: #fff;
+    color: #000;
+    overflow: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+}
+body.pj-route-page .pj-rect__stage::-webkit-scrollbar { display: none; }
+
+body.pj-route-page .pj-rect__stage > * {
+    padding: 16px 14px;
+}
+/* Reset typography for compact pages — uniform body size, header hierarchy
+ * expressed via weight/style/outline rather than scale. */
+body.pj-route-page .pj-rect__stage {
+    font-family: var(--font-sans-serif);
+    font-size: 13px;
+    line-height: 1.35;
+}
+body.pj-route-page .pj-rect__stage a {
+    color: #000;
+    text-decoration: underline;
+    background: none;
+    padding: 0;
+    border-radius: 0;
+}
+body.pj-route-page .pj-rect__stage a:hover {
+    color: transparent;
+    -webkit-text-stroke: 1px #000;
+    text-decoration: none;
+}
+body.pj-route-page .pj-rect__stage h1,
+body.pj-route-page .pj-rect__stage h2,
+body.pj-route-page .pj-rect__stage h3,
+body.pj-route-page .pj-rect__stage h4,
+body.pj-route-page .pj-rect__stage h5,
+body.pj-route-page .pj-rect__stage h6,
+body.pj-route-page .pj-rect__stage .gh-title,
+body.pj-route-page .pj-rect__stage .gh-card-title {
+    font-size: 14px;
+    line-height: 1.15;
+    margin: 0 0 0.4em;
+    font-family: var(--font-sans-serif);
+    letter-spacing: 0;
+    text-transform: none;
+}
+body.pj-route-page .pj-rect__stage h1,
+body.pj-route-page .pj-rect__stage .gh-title {
+    font-weight: 900;
+    -webkit-text-stroke: 0.6px #000;
+    text-transform: uppercase;
+}
+body.pj-route-page .pj-rect__stage h2 {
+    font-weight: 700;
+    text-transform: uppercase;
+}
+body.pj-route-page .pj-rect__stage h3 {
+    font-weight: 400;
+    color: transparent;
+    -webkit-text-stroke: 1px #000;
+    text-transform: uppercase;
+}
+body.pj-route-page .pj-rect__stage h4 {
+    font-weight: 700;
+    font-style: italic;
+}
+body.pj-route-page .pj-rect__stage h5 {
+    font-weight: 600;
+    font-variant: small-caps;
+    letter-spacing: 0.05em;
+}
+body.pj-route-page .pj-rect__stage h6 {
+    font-weight: 400;
+    font-style: italic;
+    font-variant: small-caps;
+}
+body.pj-route-page .pj-rect__stage p {
+    margin: 0 0 0.6em;
+}
+body.pj-route-page .pj-rect__stage img,
+body.pj-route-page .pj-rect__stage picture {
+    max-width: 100%;
+    height: auto;
+    display: block;
+    margin: 0.6em 0;
+}
+body.pj-route-page .pj-rect__stage figure { margin: 0.6em 0; }
+body.pj-route-page .pj-rect__stage figcaption {
+    font-size: 11px;
+    font-style: italic;
+    margin-top: 0.2em;
+}
+body.pj-route-page .pj-rect__stage hr {
+    border: 0;
+    border-top: 1px solid #000;
+    margin: 0.8em 0;
+}
+body.pj-route-page .pj-rect__stage ul,
+body.pj-route-page .pj-rect__stage ol {
+    margin: 0 0 0.6em;
+    padding-left: 1.3em;
+}
+
+/* News listing — collapse cards to inline "title · venue", wrapped. */
+body.pj-route-page .gh-postfeed {
+    display: block;
+    margin: 0;
+    padding: 0;
+}
+body.pj-route-page .gh-card {
+    display: inline;
+    background: none !important;
+    color: #000 !important;
+    margin: 0;
+    padding: 0;
+    border: 0;
+}
+body.pj-route-page .gh-card-link {
+    display: inline;
+    color: #000;
+    text-decoration: none;
+}
+body.pj-route-page .gh-card-link:hover {
+    color: transparent;
+    -webkit-text-stroke: 1px #000;
+}
+body.pj-route-page .gh-card-title {
+    display: inline;
+    font: inherit;
+    font-weight: 700;
+    text-transform: none;
+    -webkit-text-stroke: 0;
+    margin: 0;
+}
+body.pj-route-page .gh-card-excerpt {
+    display: inline;
+    font: inherit;
+    margin: 0;
+}
+body.pj-route-page .gh-card-date {
+    display: inline;
+    background: none;
+    color: #000;
+    padding: 0;
+    font: inherit;
+    margin: 0;
+    font-style: italic;
+    opacity: 0.7;
+}
+/* Title · excerpt, comma-separated, wrapped inline. */
+body.pj-route-page .gh-card::after { content: " · "; }
+body.pj-route-page .gh-card:last-child::after { content: ""; }
+body.pj-route-page .gh-card-title::after { content: " — "; font-weight: 400; }
+
+/* Compact article footer, header. */
+body.pj-route-page .gh-header { padding: 0 0 0.4em; text-align: left; }
+body.pj-route-page .gh-canvas, body.pj-route-page .gh-container {
+    max-width: 100%; padding: 0; margin: 0;
+}
+body.pj-route-page .gh-feature-image { margin: 0.4em 0; }
+body.pj-route-page .gh-post-date {
+    display: inline-block; background: none; color: #000;
+    padding: 0; font-size: 11px; font-style: italic; opacity: 0.7;
+}
+body.pj-route-page .gh-readmore { margin-top: 0.8em; padding: 0; }
+body.pj-route-page .gh-readmore-inner {
+    display: flex; gap: 12px; justify-content: space-between;
+    flex-wrap: wrap; padding: 0; max-width: 100%;
+}
+body.pj-route-page .gh-readmore h4 {
+    font-size: 12px; font-weight: 700; margin: 0; display: inline;
+}
+body.pj-route-page .gh-readmore a {
+    text-decoration: none;
+    display: inline-flex; align-items: center; gap: 4px;
+}
+body.pj-route-page .gh-readmore svg { width: 12px; height: 12px; }

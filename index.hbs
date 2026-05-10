@@ -1,311 +1,33 @@
 {{!< default}}
 {{!--
-    Front page: pixel-zone scrolling-text background + centered portrait card
-    showing the first home-hero image. The card has an ENTER link; clicking
-    it pixelates the photo and reveals a white panel filled with the nav menu
-    items, stacked vertically.
-
-    Settings for the pixel-zone background are tuned to match the agreed
-    screenshot defaults.
+    Home: the enter-card. The persistent pixel-zone background, rectangle,
+    menu tab and scroll indicator all live in default.hbs and survive SPA
+    navigation — only this body content gets swapped in/out.
 --}}
-
-{{!-- Hidden source: first image of the home-hero gallery --}}
-<div class="index-hero-source" hidden>
-    {{#get "pages" filter="slug:home-hero" as |heroPages|}}
-        {{#foreach heroPages}}
-            {{{content}}}
-        {{/foreach}}
-    {{/get}}
-</div>
-
-{{!-- Hidden source: site navigation cloned for the reveal panel --}}
-<div class="index-nav-source" hidden>
-    {{navigation}}
-</div>
-
-<section class="index-front" data-index-front data-site-title="{{@site.title}}">
-    <div class="pixel-zone" id="pixel-zone" aria-hidden="true">
-        <img class="pixel-zone__image" data-pixel-image alt="" />
-    </div>
-
+<div class="pj-page-home">
     <div class="enter-card" data-enter-card>
         <div class="enter-card__menu" data-enter-menu></div>
         <div class="enter-card__photo" data-enter-photo></div>
         <canvas class="enter-card__pixel" data-enter-pixel hidden></canvas>
         <a class="enter-card__link" href="#" data-enter-link>enter</a>
     </div>
-</section>
+</div>
 
 <script>
 (function () {
-  // ---------------- Pixel-zone background ----------------
-  const TEXT = (document.querySelector('[data-index-front]')?.dataset.siteTitle || 'possiblyjamie').trim() || 'possiblyjamie';
-  const DPR = Math.max(1, window.devicePixelRatio || 1);
-
-  const PALETTE_DARK = [
-    '#FF1F4F', '#3CC8FF', '#A4FF1F', '#FFE000',
-    '#FF6A1F', '#FF3838', '#1FFFE0', '#B41FFF',
-    '#FF1FCC', '#1FFF6A', '#FFB81F', '#54FFFF'
-  ];
-
-  // Defaults pulled from the agreed screenshot.
-  const state = {
-    speed: 64,
-    rowHeightVh: 10,
-    rowNoise: 40 / 100,
-    zoneWidth: 1140,
-    maxPix: 1,
-    fontScale: 101 / 100,
-    colorCount: 1,
-    outlineProp: 69,
-    outlineThick: 3,
-    overlap: false,
-    bgColor: '#0a0a0a'
-  };
-
-  function hash(n) {
-    n = n | 0;
-    n = ((n ^ 61) ^ (n >>> 16)) | 0;
-    n = (n + (n << 3)) | 0;
-    n = (n ^ (n >>> 4)) | 0;
-    n = Math.imul(n, 0x27d4eb2d) | 0;
-    n = n ^ (n >>> 15);
-    return n >>> 0;
-  }
-  function rowNoiseValue(idx) {
-    return (hash(idx * 1234567 + 89) / 4294967295) * 2 - 1;
-  }
-  function rowHeightFor(idx, baseH, noiseAmount) {
-    return baseH * (1 + rowNoiseValue(idx) * noiseAmount);
-  }
-
-  const stage = document.getElementById('pixel-zone');
-  const bigCanvas = document.createElement('canvas');
-  bigCanvas.className = 'pixel-zone__canvas';
-  stage.appendChild(bigCanvas);
-  const bigCtx = bigCanvas.getContext('2d');
-
-  // Cache letter widths per font size (rows of same height share metrics).
-  const metricsCache = new Map();
-  function getMetrics(fontStr) {
-    let m = metricsCache.get(fontStr);
-    if (m) return m;
-    bigCtx.font = fontStr;
-    const widths = [];
-    let total = 0;
-    for (const ch of TEXT) {
-      const w = bigCtx.measureText(ch).width;
-      widths.push(w);
-      total += w;
-    }
-    m = { widths, total };
-    metricsCache.set(fontStr, m);
-    return m;
-  }
-
-  function getColor(rowIdx, instanceIdx) {
-    if (state.colorCount <= 1) return '#FFFFFF';
-    const n = Math.min(state.colorCount, PALETTE_DARK.length);
-    return PALETTE_DARK[hash(instanceIdx + rowIdx * 1009) % n];
-  }
-  function isOutline(rowIdx, instanceIdx) {
-    if (state.outlineProp <= 0) return false;
-    if (state.outlineProp >= 100) return true;
-    const r = hash(instanceIdx * 7919 + rowIdx * 5483 + 314159) % 1000;
-    return r < state.outlineProp * 10;
-  }
-
-  // A row is just a logical scroller — no DOM canvas of its own. All rows
-  // render into the single big canvas, so glyph ascenders/descenders never
-  // clip at row boundaries (fixes iOS letter cutoff at row edges).
-  class Row {
-    constructor(direction, idx) {
-      this.direction = direction;
-      this.idx = idx;
-      this.position = (Math.random() - 0.5) * 4000;
-      this.rowHeight = 0;          // CSS px
-      this.rowYCenterCss = 0;      // CSS px (centre of this row, viewport coords)
-    }
-    update(dt) {
-      this.position += this.direction * state.speed * DPR * dt;
-    }
-  }
-
-  const rows = [];
-
-  function layoutRows() {
-    const vw = window.innerWidth;
-    const vh = window.innerHeight;
-    bigCanvas.style.width = vw + 'px';
-    bigCanvas.style.height = vh + 'px';
-    bigCanvas.width = Math.max(1, Math.floor(vw * DPR));
-    bigCanvas.height = Math.max(1, Math.floor(vh * DPR));
-
-    const baseH = vh * (state.rowHeightVh / 100);
-    const heights = [];
-    let cumH = 0, i = 0;
-    while (cumH < vh + baseH) {
-      const h = rowHeightFor(i, baseH, state.rowNoise);
-      heights.push(h);
-      cumH += h;
-      i++;
-      if (i > 80) break;
-    }
-    const target = heights.length;
-    while (rows.length < target) {
-      const dir = rows.length % 2 === 0 ? -1 : 1;
-      rows.push(new Row(dir, rows.length));
-    }
-    while (rows.length > target) rows.pop();
-
-    let cumTop = 0;
-    rows.forEach((row, idx) => {
-      row.rowHeight = heights[idx];
-      row.rowYCenterCss = cumTop + heights[idx] / 2;
-      cumTop += heights[idx];
-    });
-
-    metricsCache.clear();
-  }
-
-  function drawAll() {
-    const w = bigCanvas.width;
-    const h = bigCanvas.height;
-
-    // Opaque black backdrop — image beneath only shows through where we
-    // explicitly punch holes (the interior of outlined letters).
-    bigCtx.globalCompositeOperation = 'source-over';
-    bigCtx.fillStyle = state.bgColor;
-    bigCtx.fillRect(0, 0, w, h);
-
-    bigCtx.textAlign = 'left';
-    bigCtx.textBaseline = 'middle';
-    bigCtx.lineJoin = 'round';
-
-    const canvasThickness = state.outlineThick * DPR;
-    const fontFam = '"NaNHoloGigawide Ultra", "NaNHoloGigawide", "Futura", "Helvetica Neue", "Arial Black", sans-serif';
-
-    // Pre-compute per-row glyph layout to avoid recomputing across passes.
-    const layouts = rows.map((row) => {
-      const rowHCanvas = row.rowHeight * DPR;
-      const fontSize = rowHCanvas * state.fontScale;
-      const fontStr = '900 ' + fontSize + 'px ' + fontFam;
-      const { widths, total: wordWidth } = getMetrics(fontStr);
-      const yCenter = row.rowYCenterCss * DPR;
-      const startX = row.position;
-      const firstInst = wordWidth > 0 ? Math.floor((-startX) / wordWidth) - 1 : 0;
-      const lastInst = wordWidth > 0 ? Math.ceil((w - startX) / wordWidth) + 1 : -1;
-      return { row, fontStr, widths, wordWidth, yCenter, startX, firstInst, lastInst };
-    });
-
-    // Pass 1: punch transparent holes for outlined-letter interiors.
-    bigCtx.globalCompositeOperation = 'destination-out';
-    bigCtx.fillStyle = '#000';
-    for (const L of layouts) {
-      if (L.wordWidth <= 0) continue;
-      bigCtx.font = L.fontStr;
-      for (let i = L.firstInst; i <= L.lastInst; i++) {
-        if (!isOutline(L.row.idx, i)) continue;
-        let cx = L.startX + i * L.wordWidth;
-        for (let j = 0; j < TEXT.length; j++) {
-          const ch = TEXT[j];
-          const chW = L.widths[j];
-          if (cx + chW < 0 || cx > w) { cx += chW; continue; }
-          bigCtx.fillText(ch, cx, L.yCenter);
-          cx += chW;
-        }
-      }
-    }
-
-    // Pass 2: filled letters (opaque, covers image).
-    bigCtx.globalCompositeOperation = 'source-over';
-    for (const L of layouts) {
-      if (L.wordWidth <= 0) continue;
-      bigCtx.font = L.fontStr;
-      for (let i = L.firstInst; i <= L.lastInst; i++) {
-        if (isOutline(L.row.idx, i)) continue;
-        const color = getColor(L.row.idx, i);
-        let cx = L.startX + i * L.wordWidth;
-        for (let j = 0; j < TEXT.length; j++) {
-          const ch = TEXT[j];
-          const chW = L.widths[j];
-          if (cx + chW < 0 || cx > w) { cx += chW; continue; }
-          bigCtx.fillStyle = color;
-          bigCtx.fillText(ch, cx, L.yCenter);
-          cx += chW;
-        }
-      }
-    }
-
-    // Pass 3: stroke the outline on top of the cut-out (covers image where
-    // the outline ink itself sits, so the stroke reads cleanly).
-    bigCtx.lineWidth = canvasThickness;
-    for (const L of layouts) {
-      if (L.wordWidth <= 0) continue;
-      bigCtx.font = L.fontStr;
-      for (let i = L.firstInst; i <= L.lastInst; i++) {
-        if (!isOutline(L.row.idx, i)) continue;
-        const color = getColor(L.row.idx, i);
-        let cx = L.startX + i * L.wordWidth;
-        for (let j = 0; j < TEXT.length; j++) {
-          const ch = TEXT[j];
-          const chW = L.widths[j];
-          if (cx + chW < 0 || cx > w) { cx += chW; continue; }
-          bigCtx.strokeStyle = color;
-          bigCtx.strokeText(ch, cx, L.yCenter);
-          cx += chW;
-        }
-      }
-    }
-  }
-
-  let lastT = 0;
-  function frame(t) {
-    if (!lastT) lastT = t;
-    const dt = Math.min(0.05, (t - lastT) / 1000);
-    lastT = t;
-    for (const row of rows) row.update(dt);
-    drawAll();
-    requestAnimationFrame(frame);
-  }
-
-  document.body.style.backgroundColor = state.bgColor;
-  window.addEventListener('resize', layoutRows);
-
-  function startBg() {
-    layoutRows();
-    requestAnimationFrame(frame);
-  }
-  if (document.fonts && document.fonts.ready) {
-    document.fonts.ready.then(startBg);
-  } else {
-    startBg();
-  }
-
-  // ---------------- Enter card ----------------
   const card = document.querySelector('[data-enter-card]');
-  const photoEl = document.querySelector('[data-enter-photo]');
-  const linkEl = document.querySelector('[data-enter-link]');
-  const pixelCanvas = document.querySelector('[data-enter-pixel]');
-  const menuEl = document.querySelector('[data-enter-menu]');
+  if (!card || card.dataset.inited) return;
+  card.dataset.inited = '1';
 
-  // First image of home-hero — used as the masked backfill behind the
-  // outlined scrolling text. The enter card itself is a plain orange box.
-  const srcImg = document.querySelector('.index-hero-source img');
-  let imgUrl = null;
-  const bgImageEl = document.querySelector('[data-pixel-image]');
-  if (srcImg) {
-    imgUrl = srcImg.getAttribute('src');
-    if (bgImageEl) bgImageEl.src = imgUrl;
-  } else if (bgImageEl) {
-    bgImageEl.remove();
-  }
+  const photoEl = card.querySelector('[data-enter-photo]');
+  const linkEl = card.querySelector('[data-enter-link]');
+  const pixelCanvas = card.querySelector('[data-enter-pixel]');
+  const menuEl = card.querySelector('[data-enter-menu]');
 
   // Build nav menu from cloned site navigation
-  const navSource = document.querySelector('.index-nav-source');
+  const navSource = document.querySelector('.pj-nav-source');
   if (navSource) {
-    const items = navSource.querySelectorAll('a');
-    items.forEach((a) => {
+    navSource.querySelectorAll('a').forEach((a) => {
       const link = document.createElement('a');
       link.href = a.getAttribute('href') || '#';
       link.textContent = a.textContent.trim();
@@ -314,98 +36,7 @@
     });
   }
 
-  // Pixel-dissolve the orange overlay directly to transparent — the menu is
-  // already rendered (and pre-sized) beneath, so it just becomes visible as
-  // the orange tiles vanish. No fade, no resize.
-  function pixelateAndReveal() {
-    if (!card.classList.contains('enter-card--ready')) return;
-    card.classList.add('enter-card--transitioning');
-
-    const rect = photoEl.getBoundingClientRect();
-    const w = Math.max(1, Math.floor(rect.width));
-    const h = Math.max(1, Math.floor(rect.height));
-    pixelCanvas.style.width = w + 'px';
-    pixelCanvas.style.height = h + 'px';
-    pixelCanvas.width = w;
-    pixelCanvas.height = h;
-    pixelCanvas.hidden = false;
-
-    const ctx = pixelCanvas.getContext('2d');
-    ctx.fillStyle = '#FF6720';
-    ctx.fillRect(0, 0, w, h);
-
-    // Hide the underlying photo now that the canvas covers it — the canvas
-    // becomes the only thing masking the menu.
-    photoEl.style.display = 'none';
-
-    const cellSize = Math.max(8, Math.round(Math.min(w, h) / 22));
-    const cols = Math.ceil(w / cellSize);
-    const rows = Math.ceil(h / cellSize);
-    const cells = [];
-    for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) cells.push([c, r]);
-    for (let i = cells.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      const tmp = cells[i]; cells[i] = cells[j]; cells[j] = tmp;
-    }
-
-    const totalFrames = 26;
-    const perFrame = Math.ceil(cells.length / totalFrames);
-    let idx = 0;
-    function step() {
-      for (let k = 0; k < perFrame && idx < cells.length; k++, idx++) {
-        const [c, r] = cells[idx];
-        ctx.clearRect(c * cellSize, r * cellSize, cellSize, cellSize);
-      }
-      if (idx < cells.length) {
-        requestAnimationFrame(step);
-      } else {
-        pixelCanvas.hidden = true;
-      }
-    }
-    requestAnimationFrame(step);
-  }
-
-  // Reveal the card only after the display font is actually loaded — not
-  // just document.fonts.ready, because `visibility: hidden` text can keep
-  // the browser from requesting a `font-display: swap` font at all, leaving
-  // the card to flash in the fallback font when it appears.
-  let _shown = false;
-  function showCard() {
-    if (_shown) return;
-    _shown = true;
-    // Size the menu items before the card becomes visible — they live
-    // beneath the orange photo and need to be at their final size already
-    // so they don't visibly resize when the dissolve reveals them.
-    fitMenu();
-    card.classList.add('enter-card--ready');
-  }
-  function loadDisplayFont() {
-    if (!document.fonts || !document.fonts.load) return Promise.resolve();
-    return Promise.all([
-      document.fonts.load('400 64px "NaNHoloGigawide Ultra"'),
-      document.fonts.load('900 64px "NaNHoloGigawide Ultra"')
-    ]).catch(() => {});
-  }
-  loadDisplayFont().then(() => {
-    if (document.fonts && document.fonts.ready) {
-      document.fonts.ready.then(showCard);
-    } else {
-      showCard();
-    }
-  });
-  setTimeout(showCard, 2000); // safety: never leave the card hidden
-
-  linkEl.addEventListener('click', (e) => {
-    e.preventDefault();
-    pixelateAndReveal();
-  });
-
-  // Algorithm:
-  //   1. Find the widest item at a probe size and compute its width/font ratio.
-  //   2. Pick a uniform font-size such that the widest item fills the row.
-  //   3. Apply that size to every item.
-  //   4. If the stack of items is now taller than the rectangle, scale them
-  //      down uniformly so they fit vertically.
+  // ---- Menu sizing (per-largest-item, with vertical scale-down) ----
   function fitMenu() {
     const items = Array.from(menuEl.querySelectorAll('.enter-card__menu-item'));
     if (!items.length) return;
@@ -417,12 +48,8 @@
     const innerH = menuEl.clientHeight - padTop - padBottom;
     const innerW = menuEl.clientWidth - padLeft - padRight;
     if (innerH <= 0 || innerW <= 0) return;
-
-    const wBuf = 4; // text-stroke paints outside scrollWidth
+    const wBuf = 4;
     const targetW = Math.max(1, innerW - wBuf);
-
-    // 1+2. Probe each item at a known size and find the largest width/size
-    // ratio. The font-size that makes that item fill the row is targetW/ratio.
     const probeSize = 100;
     let maxRatio = 0;
     for (const el of items) {
@@ -432,11 +59,7 @@
     }
     if (maxRatio <= 0) return;
     let size = targetW / maxRatio;
-
-    // 3. Apply uniform size.
     for (const el of items) el.style.fontSize = size + 'px';
-
-    // 4. Vertical scale-down if needed.
     let total = 0;
     for (const el of items) total += el.offsetHeight;
     if (total > innerH) {
@@ -444,199 +67,94 @@
       for (const el of items) el.style.fontSize = size + 'px';
     }
   }
-
-  // Debounced rAF wrapper — avoids measuring mid-resize when the card is
-  // momentarily at a small intermediate size, which previously left the menu
-  // stuck at a tiny font-size.
   let _fitScheduled = false;
   function scheduleFit() {
     if (_fitScheduled) return;
     _fitScheduled = true;
-    requestAnimationFrame(() => {
-      _fitScheduled = false;
-      fitMenu();
-    });
+    requestAnimationFrame(() => { _fitScheduled = false; fitMenu(); });
   }
-  const fitObserver = new ResizeObserver(scheduleFit);
-  fitObserver.observe(menuEl);
-  fitObserver.observe(card);
+  if (window.ResizeObserver) {
+    const obs = new ResizeObserver(scheduleFit);
+    obs.observe(menuEl);
+    obs.observe(card);
+  }
   let _resizeBurst;
   window.addEventListener('resize', () => {
     scheduleFit();
     clearTimeout(_resizeBurst);
     _resizeBurst = setTimeout(scheduleFit, 120);
   });
-  if (document.fonts && document.fonts.ready) {
-    document.fonts.ready.then(scheduleFit);
+
+  // ---- Pixel-dissolve the orange overlay to reveal the menu ----
+  function pixelateAndReveal(instant) {
+    if (instant) {
+      photoEl.style.display = 'none';
+      linkEl.style.display = 'none';
+      pixelCanvas.hidden = true;
+      return;
+    }
+    card.classList.add('enter-card--transitioning');
+    const rect = photoEl.getBoundingClientRect();
+    const w = Math.max(1, Math.floor(rect.width));
+    const h = Math.max(1, Math.floor(rect.height));
+    pixelCanvas.style.width = w + 'px';
+    pixelCanvas.style.height = h + 'px';
+    pixelCanvas.width = w; pixelCanvas.height = h;
+    pixelCanvas.hidden = false;
+    const ctx = pixelCanvas.getContext('2d');
+    ctx.fillStyle = '#FF6720';
+    ctx.fillRect(0, 0, w, h);
+    photoEl.style.display = 'none';
+    const cellSize = Math.max(8, Math.round(Math.min(w, h) / 22));
+    const cols = Math.ceil(w / cellSize);
+    const rows = Math.ceil(h / cellSize);
+    const cells = [];
+    for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) cells.push([c, r]);
+    for (let i = cells.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      const tmp = cells[i]; cells[i] = cells[j]; cells[j] = tmp;
+    }
+    const totalFrames = 26;
+    const perFrame = Math.ceil(cells.length / totalFrames);
+    let idx = 0;
+    function step() {
+      for (let k = 0; k < perFrame && idx < cells.length; k++, idx++) {
+        const [c, r] = cells[idx];
+        ctx.clearRect(c * cellSize, r * cellSize, cellSize, cellSize);
+      }
+      if (idx < cells.length) requestAnimationFrame(step);
+      else pixelCanvas.hidden = true;
+    }
+    requestAnimationFrame(step);
   }
+
+  linkEl.addEventListener('click', (e) => {
+    e.preventDefault();
+    try { sessionStorage.setItem('pj-entered', '1'); } catch (_) {}
+    pixelateAndReveal(false);
+  });
+
+  // Wait for the display font to be loaded before showing the card, so the
+  // "enter" text never flashes in a fallback font and reflows.
+  function showCard() {
+    if (card.classList.contains('enter-card--ready')) return;
+    fitMenu();
+    card.classList.add('enter-card--ready');
+    // If the user has already pressed enter in this session, skip the orange.
+    let entered = false;
+    try { entered = sessionStorage.getItem('pj-entered') === '1'; } catch (_) {}
+    if (entered) pixelateAndReveal(true);
+  }
+  if (document.fonts && document.fonts.load) {
+    Promise.all([
+      document.fonts.load('400 64px "NaNHoloGigawide Ultra"'),
+      document.fonts.load('900 64px "NaNHoloGigawide Ultra"')
+    ]).catch(() => {}).then(() => {
+      (document.fonts.ready || Promise.resolve()).then(showCard);
+    });
+  } else {
+    showCard();
+  }
+  setTimeout(showCard, 2000);
 })();
 </script>
-
-<style>
-/* Lock the page: no scrolling on the index */
-html, body.home-template {
-    height: 100%;
-    overflow: hidden;
-}
-/* Hide the global header on the home page only */
-body.home-template #gh-head,
-body.home-template .gh-foot {
-    display: none !important;
-}
-body.home-template .gh-viewport,
-body.home-template .gh-main {
-    height: 100vh;
-    min-height: 100vh;
-}
-
-/* Background pixel zone */
-.index-front {
-    position: fixed;
-    inset: 0;
-    z-index: 1;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    overflow: hidden;
-}
-.pixel-zone {
-    position: fixed;
-    inset: 0;
-    z-index: 0;
-    pointer-events: none;
-    background: #0a0a0a;
-    overflow: hidden;
-}
-.pixel-zone__image {
-    position: absolute;
-    inset: 0;
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    object-position: center center;
-    display: block;
-    z-index: 0;
-    user-select: none;
-    -webkit-user-drag: none;
-}
-.pixel-zone__canvas {
-    position: absolute;
-    inset: 0;
-    display: block;
-    z-index: 1;
-}
-
-/* Hide the global title-mask layers on the front page — they reference the
- * old hero-gallery layout which isn't rendered here. */
-body.home-template .title-mask-layer,
-body.home-template .title-outline-layer {
-    display: none !important;
-}
-
-/* Center card */
-.enter-card {
-    position: relative;
-    z-index: 2;
-    width: clamp(220px, 50vmin, 420px);
-    aspect-ratio: 3 / 4;
-    margin: 0 auto;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    visibility: hidden;
-}
-.enter-card.enter-card--ready { visibility: visible; }
-
-/* White menu panel — always rendered behind the orange photo so it's sized
- * at page load (no FOUT on click). The pixel dissolve reveals it. */
-.enter-card__menu {
-    position: absolute;
-    inset: 0;
-    background: #fff;
-    display: flex;
-    flex-direction: column;
-    align-items: stretch;
-    justify-content: space-between;
-    padding: 2% 4%;
-    gap: 0;
-    z-index: 1;
-}
-.enter-card__photo {
-    position: absolute;
-    inset: 0;
-    background-color: #FF6720;
-    z-index: 2;
-}
-.enter-card__pixel {
-    position: absolute;
-    inset: 0;
-    display: block;
-    image-rendering: pixelated;
-    image-rendering: crisp-edges;
-    z-index: 3;
-}
-.enter-card__pixel[hidden] { display: none !important; }
-.enter-card__link {
-    position: relative;
-    z-index: 4;
-    font-family: "NaNHoloGigawide Ultra", var(--font-sans-serif);
-    font-weight: 900;
-    color: #fff;
-    text-decoration: none;
-    text-transform: lowercase;
-    font-size: clamp(2.2rem, 6vmin, 5.2rem);
-    letter-spacing: 0.02em;
-    padding: 0.3em 0.6em;
-    -webkit-text-stroke: 0 #fff;
-    transition: color 120ms ease, -webkit-text-stroke-width 120ms ease;
-}
-.enter-card__link:hover,
-.enter-card__link:active {
-    color: transparent;
-    -webkit-text-stroke-width: 2px;
-}
-.enter-card--transitioning .enter-card__link { display: none; }
-
-/* The font-family, weight, line-height and stroke are declared with high
- * specificity (the doubled class) so global header/nav rules elsewhere in
- * the theme can never bleed in at any viewport size. */
-.enter-card__menu .enter-card__menu-item,
-.enter-card .enter-card__menu-item {
-    display: flex;
-    align-items: center;
-    justify-content: flex-start;
-    font-family: "NaNHoloGigawide Ultra", var(--font-sans-serif);
-    font-weight: 900;
-    font-style: normal;
-    font-stretch: normal;
-    text-decoration: none;
-    text-transform: lowercase;
-    letter-spacing: 0;
-    line-height: 0.9;
-    color: transparent;
-    -webkit-text-stroke: 1px #000;
-    transition: color 140ms ease, -webkit-text-stroke-width 140ms ease;
-    white-space: nowrap;
-    margin: 0;
-    padding: 0;
-    flex: 0 0 auto;
-}
-.enter-card .enter-card__menu-item:hover {
-    color: #000;
-    -webkit-text-stroke-width: 0;
-}
-@media (max-width: 900px), (max-width: 600px), (max-width: 700px) {
-    /* Re-assert the same rule inside known mobile media queries so any
-     * theme-wide overrides at those breakpoints can't push the menu around. */
-    .enter-card .enter-card__menu-item {
-        font-family: "NaNHoloGigawide Ultra", var(--font-sans-serif);
-        font-weight: 900;
-        line-height: 0.9;
-        letter-spacing: 0;
-        flex: 0 0 auto;
-    }
-}
-
-/* Don't let the default theme's flex column rules squash us */
-.gh-main { position: relative; z-index: 1; }
-</style>

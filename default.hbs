@@ -11,49 +11,344 @@
     <title>{{meta_title}}</title>
 
     {{ghost_head}}
-    {{!-- Outputs important meta data and settings, should always be in <head> --}}
 
 </head>
-<body class="{{body_class}}">
-<div class="title-mask-layer" aria-hidden="true"></div>
-<div class="title-outline-layer" aria-hidden="true"></div>
-<div class="gh-viewport">
+<body class="{{body_class}}" data-site-title="{{@site.title}}">
 
-<header id="gh-head" class="gh-head">
-    <a class="gh-head-logo" href="{{@site.url}}" aria-label="{{@site.title}}">
-        <svg class="gh-head-title-svg" preserveAspectRatio="xMidYMid meet" role="img">
-            <title>{{@site.title}}</title>
-            <text x="0" y="0" dominant-baseline="text-before-edge" class="gh-head-title-text">{{@site.title}}</text>
-        </svg>
-    </a>
-    <nav class="gh-head-nav" aria-label="Primary">
-        <div class="gh-head-nav-scroll">
-            {{navigation}}
-        </div>
-        <button class="gh-head-nav-arrow" type="button" aria-label="Scroll navigation right">&rarr;</button>
-    </nav>
-</header>
-
-<main class="gh-main">
-
-    {{{body}}}
-    {{!-- All content gets inserted here, index.hbs, post.hbs, etc --}}
-
-</main>
-
-<footer class="gh-foot">
-    {{#get "pages" filter="slug:footer-notice" as |footerPages|}}
-        {{#foreach footerPages}}
-            <div class="gh-foot-notice">{{{content}}}</div>
-        {{/foreach}}
-    {{/get}}
-</footer>
-
+{{!-- Persistent pixel-zone background. Rendered once and never re-rendered.
+     SPA navigation swaps only the rectangle's stage, so this canvas keeps
+     scrolling continuously as the user moves between pages. --}}
+<div class="pj-bg" id="pixel-zone" aria-hidden="true">
+    <img class="pj-bg__image" data-pixel-image alt="">
 </div>
 
-{{!-- <foot> --}}
+{{!-- Hidden sources read by the JS: first hero image (for the bg mask) and
+     the site navigation (cloned into the home enter-card menu). --}}
+<div class="pj-hero-source" hidden>
+    {{#get "pages" filter="slug:home-hero" as |heroPages|}}
+        {{#foreach heroPages}}{{{content}}}{{/foreach}}
+    {{/get}}
+</div>
+<div class="pj-nav-source" hidden>
+    {{navigation}}
+</div>
+
+{{!-- "menu" tab — visible on non-home routes only (see CSS). Clicking it
+     SPA-navigates back to /. --}}
+<a class="pj-menu-tab" href="{{@site.url}}" data-menu-tab>menu</a>
+
+{{!-- The rectangle. Holds either the enter-card (home) or page content
+     (everywhere else). SPA swaps only the contents of [data-rect-stage]. --}}
+<main class="pj-rect" data-rect>
+    <div class="pj-rect__stage" data-rect-stage data-route-template="{{@view}}">
+        {{{body}}}
+    </div>
+    <div class="pj-scroll-indicator" data-scroll-ind aria-hidden="true"></div>
+</main>
+
+<script>
+(function () {
+  // -------------------- Pixel-zone background --------------------
+  const TEXT = (document.body.dataset.siteTitle || 'possiblyjamie').trim() || 'possiblyjamie';
+  const DPR = Math.max(1, window.devicePixelRatio || 1);
+  const PALETTE_DARK = ['#FF1F4F','#3CC8FF','#A4FF1F','#FFE000','#FF6A1F','#FF3838','#1FFFE0','#B41FFF','#FF1FCC','#1FFF6A','#FFB81F','#54FFFF'];
+
+  const state = {
+    speed: 64, rowHeightVh: 10, rowNoise: 0.40,
+    zoneWidth: 1140, maxPix: 1, fontScale: 1.01,
+    colorCount: 1, outlineProp: 69, outlineThick: 3,
+    overlap: false, bgColor: '#0a0a0a'
+  };
+
+  function hash(n) {
+    n = n | 0; n = ((n ^ 61) ^ (n >>> 16)) | 0; n = (n + (n << 3)) | 0;
+    n = (n ^ (n >>> 4)) | 0; n = Math.imul(n, 0x27d4eb2d) | 0; n = n ^ (n >>> 15);
+    return n >>> 0;
+  }
+  const rowNoiseValue = (i) => (hash(i * 1234567 + 89) / 4294967295) * 2 - 1;
+  const rowHeightFor = (i, base, amt) => base * (1 + rowNoiseValue(i) * amt);
+
+  const stage = document.getElementById('pixel-zone');
+  const bigCanvas = document.createElement('canvas');
+  bigCanvas.className = 'pj-bg__canvas';
+  stage.appendChild(bigCanvas);
+  const bigCtx = bigCanvas.getContext('2d');
+
+  const metricsCache = new Map();
+  function getMetrics(fontStr) {
+    let m = metricsCache.get(fontStr);
+    if (m) return m;
+    bigCtx.font = fontStr;
+    const widths = []; let total = 0;
+    for (const ch of TEXT) { const w = bigCtx.measureText(ch).width; widths.push(w); total += w; }
+    m = { widths, total }; metricsCache.set(fontStr, m); return m;
+  }
+  function getColor(rowIdx, instIdx) {
+    if (state.colorCount <= 1) return '#FFFFFF';
+    const n = Math.min(state.colorCount, PALETTE_DARK.length);
+    return PALETTE_DARK[hash(instIdx + rowIdx * 1009) % n];
+  }
+  function isOutline(rowIdx, instIdx) {
+    if (state.outlineProp <= 0) return false;
+    if (state.outlineProp >= 100) return true;
+    return (hash(instIdx * 7919 + rowIdx * 5483 + 314159) % 1000) < state.outlineProp * 10;
+  }
+
+  class Row {
+    constructor(direction, idx) {
+      this.direction = direction; this.idx = idx;
+      this.position = (Math.random() - 0.5) * 4000;
+      this.rowHeight = 0; this.rowYCenterCss = 0;
+    }
+    update(dt) { this.position += this.direction * state.speed * DPR * dt; }
+  }
+
+  const rows = [];
+  function layoutRows() {
+    const vw = window.innerWidth, vh = window.innerHeight;
+    bigCanvas.style.width = vw + 'px';
+    bigCanvas.style.height = vh + 'px';
+    bigCanvas.width = Math.max(1, Math.floor(vw * DPR));
+    bigCanvas.height = Math.max(1, Math.floor(vh * DPR));
+    const baseH = vh * (state.rowHeightVh / 100);
+    const heights = []; let cumH = 0, i = 0;
+    while (cumH < vh + baseH) {
+      const h = rowHeightFor(i, baseH, state.rowNoise);
+      heights.push(h); cumH += h; i++;
+      if (i > 80) break;
+    }
+    while (rows.length < heights.length) {
+      const dir = rows.length % 2 === 0 ? -1 : 1;
+      rows.push(new Row(dir, rows.length));
+    }
+    while (rows.length > heights.length) rows.pop();
+    let cumTop = 0;
+    rows.forEach((row, idx) => {
+      row.rowHeight = heights[idx];
+      row.rowYCenterCss = cumTop + heights[idx] / 2;
+      cumTop += heights[idx];
+    });
+    metricsCache.clear();
+  }
+
+  function drawAll() {
+    const w = bigCanvas.width, h = bigCanvas.height;
+    bigCtx.globalCompositeOperation = 'source-over';
+    bigCtx.fillStyle = state.bgColor;
+    bigCtx.fillRect(0, 0, w, h);
+    bigCtx.textAlign = 'left';
+    bigCtx.textBaseline = 'middle';
+    bigCtx.lineJoin = 'round';
+    const thickness = state.outlineThick * DPR;
+    const fontFam = '"NaNHoloGigawide Ultra", "NaNHoloGigawide", "Futura", "Helvetica Neue", "Arial Black", sans-serif';
+    const layouts = rows.map((row) => {
+      const rowH = row.rowHeight * DPR;
+      const fs = rowH * state.fontScale;
+      const fontStr = '900 ' + fs + 'px ' + fontFam;
+      const { widths, total: ww } = getMetrics(fontStr);
+      const y = row.rowYCenterCss * DPR;
+      const sx = row.position;
+      const first = ww > 0 ? Math.floor(-sx / ww) - 1 : 0;
+      const last = ww > 0 ? Math.ceil((w - sx) / ww) + 1 : -1;
+      return { row, fontStr, widths, ww, y, sx, first, last };
+    });
+    bigCtx.globalCompositeOperation = 'destination-out';
+    bigCtx.fillStyle = '#000';
+    for (const L of layouts) {
+      if (L.ww <= 0) continue;
+      bigCtx.font = L.fontStr;
+      for (let i = L.first; i <= L.last; i++) {
+        if (!isOutline(L.row.idx, i)) continue;
+        let cx = L.sx + i * L.ww;
+        for (let j = 0; j < TEXT.length; j++) {
+          const cw = L.widths[j];
+          if (cx + cw < 0 || cx > w) { cx += cw; continue; }
+          bigCtx.fillText(TEXT[j], cx, L.y); cx += cw;
+        }
+      }
+    }
+    bigCtx.globalCompositeOperation = 'source-over';
+    for (const L of layouts) {
+      if (L.ww <= 0) continue;
+      bigCtx.font = L.fontStr;
+      for (let i = L.first; i <= L.last; i++) {
+        if (isOutline(L.row.idx, i)) continue;
+        const color = getColor(L.row.idx, i);
+        let cx = L.sx + i * L.ww;
+        for (let j = 0; j < TEXT.length; j++) {
+          const cw = L.widths[j];
+          if (cx + cw < 0 || cx > w) { cx += cw; continue; }
+          bigCtx.fillStyle = color;
+          bigCtx.fillText(TEXT[j], cx, L.y); cx += cw;
+        }
+      }
+    }
+    bigCtx.lineWidth = thickness;
+    for (const L of layouts) {
+      if (L.ww <= 0) continue;
+      bigCtx.font = L.fontStr;
+      for (let i = L.first; i <= L.last; i++) {
+        if (!isOutline(L.row.idx, i)) continue;
+        const color = getColor(L.row.idx, i);
+        let cx = L.sx + i * L.ww;
+        for (let j = 0; j < TEXT.length; j++) {
+          const cw = L.widths[j];
+          if (cx + cw < 0 || cx > w) { cx += cw; continue; }
+          bigCtx.strokeStyle = color;
+          bigCtx.strokeText(TEXT[j], cx, L.y); cx += cw;
+        }
+      }
+    }
+  }
+
+  let lastT = 0;
+  function frame(t) {
+    if (!lastT) lastT = t;
+    const dt = Math.min(0.05, (t - lastT) / 1000); lastT = t;
+    for (const row of rows) row.update(dt);
+    drawAll();
+    requestAnimationFrame(frame);
+  }
+
+  document.body.style.backgroundColor = state.bgColor;
+  window.addEventListener('resize', layoutRows);
+  if (document.fonts && document.fonts.ready) {
+    document.fonts.ready.then(() => { layoutRows(); requestAnimationFrame(frame); });
+  } else {
+    layoutRows(); requestAnimationFrame(frame);
+  }
+
+  // First hero image → background mask
+  const srcImg = document.querySelector('.pj-hero-source img');
+  const bgImg = document.querySelector('[data-pixel-image]');
+  if (srcImg && bgImg) {
+    bgImg.src = srcImg.getAttribute('src');
+  } else if (bgImg) {
+    bgImg.remove();
+  }
+
+  // -------------------- Route + body class --------------------
+  function isHomeRoute() {
+    return location.pathname === '/' || location.pathname === '';
+  }
+  function setRouteClass() {
+    document.body.classList.toggle('pj-route-home', isHomeRoute());
+    document.body.classList.toggle('pj-route-page', !isHomeRoute());
+  }
+  setRouteClass();
+
+  // -------------------- Scroll indicator --------------------
+  const scrollInd = document.querySelector('[data-scroll-ind]');
+  let scrollTarget = null;
+  function getScrollTarget() {
+    return document.querySelector('.pj-rect__stage > .pj-page, .pj-rect__stage > .pj-page-content');
+  }
+  function updateScrollIndicator() {
+    if (!scrollInd) return;
+    const t = scrollTarget || getScrollTarget();
+    if (!t) { scrollInd.style.display = 'none'; return; }
+    const sH = t.scrollHeight, cH = t.clientHeight;
+    if (sH <= cH + 1) { scrollInd.style.display = 'none'; return; }
+    scrollInd.style.display = '';
+    const range = sH - cH;
+    const ratio = range > 0 ? t.scrollTop / range : 0;
+    const trackH = cH - 10; // 10px square
+    scrollInd.style.top = (ratio * trackH) + 'px';
+  }
+  function attachScrollTarget() {
+    if (scrollTarget) scrollTarget.removeEventListener('scroll', updateScrollIndicator);
+    scrollTarget = getScrollTarget();
+    if (scrollTarget) {
+      scrollTarget.addEventListener('scroll', updateScrollIndicator);
+      if (window.ResizeObserver) {
+        new ResizeObserver(updateScrollIndicator).observe(scrollTarget);
+      }
+    }
+    updateScrollIndicator();
+  }
+  window.addEventListener('resize', updateScrollIndicator);
+
+  // -------------------- SPA navigation --------------------
+  const stageEl = document.querySelector('[data-rect-stage]');
+
+  async function spaNavigate(href, push = true) {
+    const target = new URL(href, location.origin);
+    if (target.origin !== location.origin) { location.href = href; return; }
+    if (target.pathname === location.pathname && !push) {
+      // popstate to same path — nothing to do
+      return;
+    }
+
+    try {
+      stageEl.classList.add('is-loading');
+      const res = await fetch(target.pathname + target.search, { headers: { 'Accept': 'text/html' } });
+      if (!res.ok) throw new Error('fetch failed');
+      const html = await res.text();
+      const doc = new DOMParser().parseFromString(html, 'text/html');
+
+      const newStage = doc.querySelector('[data-rect-stage]');
+      if (!newStage) { location.href = href; return; }
+
+      stageEl.innerHTML = newStage.innerHTML;
+
+      const newView = newStage.getAttribute('data-route-template') || '';
+      stageEl.setAttribute('data-route-template', newView);
+
+      const newBodyClass = doc.body.getAttribute('class') || '';
+      document.body.setAttribute('class', newBodyClass);
+
+      const t = doc.querySelector('title');
+      if (t) document.title = t.textContent;
+
+      if (push) history.pushState({ pj: 1 }, '', target.pathname + target.search);
+      setRouteClass();
+      attachScrollTarget();
+      initRoute();
+    } catch (e) {
+      location.href = href;
+    } finally {
+      stageEl.classList.remove('is-loading');
+    }
+  }
+
+  document.addEventListener('click', (e) => {
+    if (e.defaultPrevented) return;
+    if (e.button !== 0) return;
+    if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+    const a = e.target.closest('a[href]');
+    if (!a) return;
+    if (a.target === '_blank') return;
+    if (a.hasAttribute('data-no-spa')) return;
+    if (a.getAttribute('href').startsWith('#')) return;
+    const url = new URL(a.href, location.origin);
+    if (url.origin !== location.origin) return;
+    if (url.pathname === location.pathname && url.search === location.search) {
+      if (url.hash) return; // allow in-page anchor
+    }
+    e.preventDefault();
+    spaNavigate(a.href);
+  });
+  window.addEventListener('popstate', () => spaNavigate(location.href, false));
+
+  // -------------------- Per-route init --------------------
+  function initRoute() {
+    // Re-run any inline <script> blocks the swapped HTML brought with it.
+    // We only re-run scripts inside the stage, so the page's own bootstrap
+    // (e.g., the enter-card init on home) fires again after navigation.
+    const scripts = stageEl.querySelectorAll('script');
+    scripts.forEach((s) => {
+      const fresh = document.createElement('script');
+      for (const a of s.attributes) fresh.setAttribute(a.name, a.value);
+      fresh.text = s.textContent;
+      s.parentNode.replaceChild(fresh, s);
+    });
+  }
+
+  attachScrollTarget();
+})();
+</script>
+
 {{ghost_foot}}
-{{!-- Outputs important scripts - should always be included before closing body tag --}}
 
 </body>
 </html>
