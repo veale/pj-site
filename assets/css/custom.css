@@ -277,6 +277,22 @@ a:not([class]) {
 .gh-canvas .kg-bookmark-card a.kg-bookmark-container:hover {
     background: var(--color-orange) !important;
     color: #fff !important;
+    outline: 2px solid #fff;
+    outline-offset: 0;
+}
+
+/* All hover-invert cards in articles get a white outline on hover so they
+ * stay framed when their background matches the orange page bg. */
+.gh-content .kg-callout-card:hover,
+.gh-content .kg-toggle-card:hover,
+.gh-content .kg-file-card a:hover,
+.gh-content .kg-file-card .kg-file-card-container:hover,
+.gh-content .kg-audio-card:hover,
+.gh-content .kg-button-card a:hover,
+.gh-content .kg-btn:hover,
+.gh-content .kg-product-card-container:hover {
+    outline: 2px solid #fff;
+    outline-offset: 0;
 }
 
 .kg-bookmark-content {
@@ -941,12 +957,14 @@ a:not([class]) {
     transition: font-weight 120ms ease;
 }
 
-/* Hover-bold body-text links (no colour change) */
+/* Hover-bold body-text links + white outline around the box */
 .gh-content a:hover,
 .gh-canvas a:not([class]):hover,
 .gh-content blockquote a:hover,
 .gh-canvas > blockquote a:hover {
     font-weight: 700;
+    outline: 2px solid #fff;
+    outline-offset: 0;
 }
 
 /* Force post/page body content to Space Grotesk (was serif) */
