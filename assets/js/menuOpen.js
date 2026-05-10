@@ -92,6 +92,11 @@ async function buildTitleMask() {
 
     // Clone the live title SVG so glyph metrics match. Bake font-* attrs
     // because the serialized SVG won't see the page's stylesheet.
+    //
+    // To keep the visible white outline at full thickness, shrink the mask
+    // inward by the stroke width: paint a black stroke on top of the white
+    // fill so the mirror only shows through the *interior* of each glyph,
+    // leaving the navbar's full stroke (both inner and outer halves) visible.
     const cs = window.getComputedStyle(text);
     const clone = titleSvg.cloneNode(true);
     clone.removeAttribute('class');
@@ -100,8 +105,11 @@ async function buildTitleMask() {
     const t2 = clone.querySelector('text');
     t2.removeAttribute('class');
     t2.setAttribute('fill', 'white');
-    t2.setAttribute('stroke', 'none');
-    t2.removeAttribute('vector-effect');
+    t2.setAttribute('stroke', 'black');
+    t2.setAttribute('stroke-width', '4'); // ≈ visible 2px stroke + a touch of headroom
+    t2.setAttribute('vector-effect', 'non-scaling-stroke');
+    t2.setAttribute('paint-order', 'fill stroke');
+    t2.setAttribute('stroke-linejoin', 'round');
     t2.setAttribute('font-family', (cs.fontFamily || 'sans-serif').replace(/"/g, "'"));
     t2.setAttribute('font-weight', cs.fontWeight || '400');
     t2.setAttribute('font-size', String(parseFloat(cs.fontSize) || 160));

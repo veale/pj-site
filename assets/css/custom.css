@@ -79,6 +79,7 @@ a:not([class]) {
     margin: 0;
     line-height: 0;
     font-size: 0;
+    vertical-align: top;
 }
 
 .gh-head-title-svg {
@@ -86,6 +87,8 @@ a:not([class]) {
     width: 100%;
     height: auto;
     overflow: visible;
+    margin: 0;
+    vertical-align: top;
 }
 
 .gh-head-title-text {
