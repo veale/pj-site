@@ -29,10 +29,10 @@
     </div>
 
     <div class="enter-card" data-enter-card>
+        <div class="enter-card__menu" data-enter-menu></div>
         <div class="enter-card__photo" data-enter-photo></div>
         <canvas class="enter-card__pixel" data-enter-pixel hidden></canvas>
         <a class="enter-card__link" href="#" data-enter-link>enter</a>
-        <div class="enter-card__menu" data-enter-menu hidden></div>
     </div>
 </section>
 
@@ -314,7 +314,9 @@
     });
   }
 
-  // Pixel-dissolve from orange → white, then reveal the menu panel.
+  // Pixel-dissolve the orange overlay directly to transparent — the menu is
+  // already rendered (and pre-sized) beneath, so it just becomes visible as
+  // the orange tiles vanish. No fade, no resize.
   function pixelateAndReveal() {
     if (!card.classList.contains('enter-card--ready')) return;
     card.classList.add('enter-card--transitioning');
@@ -332,6 +334,10 @@
     ctx.fillStyle = '#FF6720';
     ctx.fillRect(0, 0, w, h);
 
+    // Hide the underlying photo now that the canvas covers it — the canvas
+    // becomes the only thing masking the menu.
+    photoEl.style.display = 'none';
+
     const cellSize = Math.max(8, Math.round(Math.min(w, h) / 22));
     const cols = Math.ceil(w / cellSize);
     const rows = Math.ceil(h / cellSize);
@@ -342,26 +348,18 @@
       const tmp = cells[i]; cells[i] = cells[j]; cells[j] = tmp;
     }
 
-    photoEl.style.visibility = 'hidden';
-    linkEl.style.visibility = 'hidden';
-
     const totalFrames = 26;
     const perFrame = Math.ceil(cells.length / totalFrames);
     let idx = 0;
     function step() {
-      ctx.fillStyle = '#fff';
       for (let k = 0; k < perFrame && idx < cells.length; k++, idx++) {
         const [c, r] = cells[idx];
-        ctx.fillRect(c * cellSize, r * cellSize, cellSize, cellSize);
+        ctx.clearRect(c * cellSize, r * cellSize, cellSize, cellSize);
       }
       if (idx < cells.length) {
         requestAnimationFrame(step);
       } else {
-        menuEl.hidden = false;
-        // Size items before the opacity transition starts so they don't
-        // visibly resize during the fade-in.
-        fitMenu();
-        requestAnimationFrame(() => card.classList.add('enter-card--revealed'));
+        pixelCanvas.hidden = true;
       }
     }
     requestAnimationFrame(step);
@@ -375,6 +373,10 @@
   function showCard() {
     if (_shown) return;
     _shown = true;
+    // Size the menu items before the card becomes visible — they live
+    // beneath the orange photo and need to be at their final size already
+    // so they don't visibly resize when the dissolve reveals them.
+    fitMenu();
     card.classList.add('enter-card--ready');
   }
   function loadDisplayFont() {
@@ -402,7 +404,6 @@
   // line-boxes fit vertically. line-height is set in CSS to a tight value so
   // there's less invisible leading between items — the rectangle fills.
   function fitMenu() {
-    if (menuEl.hidden) return;
     const items = Array.from(menuEl.querySelectorAll('.enter-card__menu-item'));
     if (!items.length) return;
     const cs = getComputedStyle(menuEl);
@@ -417,11 +418,14 @@
     function setSize(px) {
       for (const el of items) el.style.fontSize = px + 'px';
     }
+    // scrollWidth excludes the text-stroke that paints outside the glyph
+    // bounds, so leave a small buffer to keep stroked text inside the box.
+    const wBuf = 4;
     function fits(px) {
       setSize(px);
       let total = 0;
       for (const el of items) {
-        if (el.scrollWidth > innerW + 0.5) return false;
+        if (el.scrollWidth > innerW - wBuf) return false;
         total += el.offsetHeight;
         if (total > innerH + 0.5) return false;
       }
@@ -535,7 +539,7 @@ body.home-template .title-outline-layer {
 .enter-card {
     position: relative;
     z-index: 2;
-    width: min(42vmin, 420px);
+    width: clamp(220px, 50vmin, 420px);
     aspect-ratio: 3 / 4;
     margin: 0 auto;
     display: flex;
@@ -544,13 +548,26 @@ body.home-template .title-outline-layer {
     visibility: hidden;
 }
 .enter-card.enter-card--ready { visibility: visible; }
-@media (max-width: 700px) {
-    .enter-card { width: min(65vmin, 360px); }
+
+/* White menu panel — always rendered behind the orange photo so it's sized
+ * at page load (no FOUT on click). The pixel dissolve reveals it. */
+.enter-card__menu {
+    position: absolute;
+    inset: 0;
+    background: #fff;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: space-between;
+    padding: 2% 4%;
+    gap: 0;
+    z-index: 1;
 }
 .enter-card__photo {
     position: absolute;
     inset: 0;
     background-color: #FF6720;
+    z-index: 2;
 }
 .enter-card__pixel {
     position: absolute;
@@ -558,10 +575,11 @@ body.home-template .title-outline-layer {
     display: block;
     image-rendering: pixelated;
     image-rendering: crisp-edges;
+    z-index: 3;
 }
 .enter-card__link {
     position: relative;
-    z-index: 3;
+    z-index: 4;
     font-family: "NaNHoloGigawide Ultra", var(--font-sans-serif);
     font-weight: 900;
     color: #fff;
@@ -578,24 +596,8 @@ body.home-template .title-outline-layer {
     color: transparent;
     -webkit-text-stroke-width: 2px;
 }
-.enter-card--transitioning .enter-card__link { opacity: 0; pointer-events: none; }
+.enter-card--transitioning .enter-card__link { display: none; }
 
-/* Menu reveal */
-.enter-card__menu {
-    position: absolute;
-    inset: 0;
-    background: #fff;
-    display: flex;
-    flex-direction: column;
-    align-items: stretch;
-    justify-content: space-between;
-    opacity: 0;
-    transition: opacity 260ms ease;
-    padding: 2% 4%;
-    gap: 0;
-}
-.enter-card--revealed .enter-card__menu { opacity: 1; }
-.enter-card--revealed .enter-card__pixel { opacity: 0; transition: opacity 260ms ease; }
 .enter-card__menu-item {
     display: flex;
     align-items: center;

@@ -5,7 +5,11 @@
     src: url("../fonts/NaNHoloGigawide-Ultra.woff2") format("woff2");
     font-style: normal;
     font-weight: 400;
-    font-display: swap;
+    /* `block` means the browser shows nothing for up to 3 s while waiting
+     * for this font, then falls back. The font is preloaded in <head> so the
+     * block period is effectively instant, and we never see a fallback flash
+     * that would read as a "zoom" when NaNHolo swaps in. */
+    font-display: block;
 }
 
 @font-face {
