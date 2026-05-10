@@ -400,11 +400,12 @@
     pixelateAndReveal();
   });
 
-  // NaNHolo is ultra-wide, so a long item like "spotify" would force every
-  // item to a uniform tiny font and leave most of the rectangle empty.
-  // Instead, size each item to its own horizontal max, then scale all items
-  // down uniformly if the stack overflows vertically — and cap individual
-  // items so a single short word can't grow taller than its share.
+  // Algorithm:
+  //   1. Find the widest item at a probe size and compute its width/font ratio.
+  //   2. Pick a uniform font-size such that the widest item fills the row.
+  //   3. Apply that size to every item.
+  //   4. If the stack of items is now taller than the rectangle, scale them
+  //      down uniformly so they fit vertically.
   function fitMenu() {
     const items = Array.from(menuEl.querySelectorAll('.enter-card__menu-item'));
     if (!items.length) return;
@@ -417,41 +418,30 @@
     const innerW = menuEl.clientWidth - padLeft - padRight;
     if (innerH <= 0 || innerW <= 0) return;
 
-    // text-stroke paints outside the glyph and isn't reported by scrollWidth.
-    const wBuf = 4;
-    // No item should be taller than this — keeps "about" from ballooning when
-    // "spotify" is what's limiting the rest.
-    const effectiveN = Math.max(items.length, 4);
-    const perItemCap = innerH / effectiveN / 0.9; // line-height: 0.9
+    const wBuf = 4; // text-stroke paints outside scrollWidth
+    const targetW = Math.max(1, innerW - wBuf);
 
-    // For each item, binary-search its largest font-size that fits its row
-    // horizontally (and respects the per-item height cap).
-    const sizes = [];
+    // 1+2. Probe each item at a known size and find the largest width/size
+    // ratio. The font-size that makes that item fill the row is targetW/ratio.
+    const probeSize = 100;
+    let maxRatio = 0;
     for (const el of items) {
-      let lo = 4;
-      let hi = Math.max(8, perItemCap);
-      function fitsAt(px) {
-        el.style.fontSize = px + 'px';
-        return el.scrollWidth <= innerW - wBuf;
-      }
-      if (!fitsAt(lo)) { sizes.push(lo); continue; }
-      for (let i = 0; i < 22; i++) {
-        const mid = (lo + hi) / 2;
-        if (fitsAt(mid)) lo = mid; else hi = mid;
-      }
-      sizes.push(lo);
+      el.style.fontSize = probeSize + 'px';
+      const r = el.scrollWidth / probeSize;
+      if (r > maxRatio) maxRatio = r;
     }
+    if (maxRatio <= 0) return;
+    let size = targetW / maxRatio;
 
-    // Apply the per-item maxes, then scale everything down proportionally if
-    // the stack is taller than the rectangle.
-    for (let i = 0; i < items.length; i++) items[i].style.fontSize = sizes[i] + 'px';
+    // 3. Apply uniform size.
+    for (const el of items) el.style.fontSize = size + 'px';
+
+    // 4. Vertical scale-down if needed.
     let total = 0;
     for (const el of items) total += el.offsetHeight;
     if (total > innerH) {
-      const ratio = innerH / total;
-      for (let i = 0; i < items.length; i++) {
-        items[i].style.fontSize = (sizes[i] * ratio) + 'px';
-      }
+      size = size * (innerH / total);
+      for (const el of items) el.style.fontSize = size + 'px';
     }
   }
 
@@ -606,14 +596,21 @@ body.home-template .title-outline-layer {
 }
 .enter-card--transitioning .enter-card__link { display: none; }
 
-.enter-card__menu-item {
+/* The font-family, weight, line-height and stroke are declared with high
+ * specificity (the doubled class) so global header/nav rules elsewhere in
+ * the theme can never bleed in at any viewport size. */
+.enter-card__menu .enter-card__menu-item,
+.enter-card .enter-card__menu-item {
     display: flex;
     align-items: center;
     justify-content: flex-start;
     font-family: "NaNHoloGigawide Ultra", var(--font-sans-serif);
     font-weight: 900;
+    font-style: normal;
+    font-stretch: normal;
     text-decoration: none;
     text-transform: lowercase;
+    letter-spacing: 0;
     line-height: 0.9;
     color: transparent;
     -webkit-text-stroke: 1px #000;
@@ -623,9 +620,20 @@ body.home-template .title-outline-layer {
     padding: 0;
     flex: 0 0 auto;
 }
-.enter-card__menu-item:hover {
+.enter-card .enter-card__menu-item:hover {
     color: #000;
     -webkit-text-stroke-width: 0;
+}
+@media (max-width: 900px), (max-width: 600px), (max-width: 700px) {
+    /* Re-assert the same rule inside known mobile media queries so any
+     * theme-wide overrides at those breakpoints can't push the menu around. */
+    .enter-card .enter-card__menu-item {
+        font-family: "NaNHoloGigawide Ultra", var(--font-sans-serif);
+        font-weight: 900;
+        line-height: 0.9;
+        letter-spacing: 0;
+        flex: 0 0 auto;
+    }
 }
 
 /* Don't let the default theme's flex column rules squash us */
