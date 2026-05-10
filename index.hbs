@@ -358,22 +358,56 @@
         requestAnimationFrame(step);
       } else {
         menuEl.hidden = false;
+        // Size items before the opacity transition starts so they don't
+        // visibly resize during the fade-in.
+        fitMenu();
         requestAnimationFrame(() => card.classList.add('enter-card--revealed'));
       }
     }
     requestAnimationFrame(step);
   }
 
-  card.classList.add('enter-card--ready');
+  // Reveal the card only after fonts are ready, otherwise the "enter" text
+  // is laid out in the fallback font first and visually re-flows when NaNHolo
+  // swaps in — reads as a zoom-in entry transition.
+  function showCard() {
+    card.classList.add('enter-card--ready');
+  }
+  if (document.fonts && document.fonts.ready) {
+    document.fonts.ready.then(showCard);
+    setTimeout(showCard, 1500); // safety: never leave the card hidden
+  } else {
+    showCard();
+  }
 
   linkEl.addEventListener('click', (e) => {
     e.preventDefault();
     pixelateAndReveal();
   });
 
+  // Measure the actual ink height of the menu font at a known size so we can
+  // set CSS line-height to match. NaNHolo Ultra's ink only fills ~75% of its
+  // em-box; without this the binary search hits its vertical cap long before
+  // the glyphs visually fill the rectangle.
+  let _inkRatio = null;
+  function inkRatio() {
+    if (_inkRatio != null) return _inkRatio;
+    const c = document.createElement('canvas');
+    const ctx = c.getContext('2d');
+    const sampleSize = 200;
+    ctx.font = '900 ' + sampleSize + 'px "NaNHoloGigawide Ultra", "NaNHoloGigawide", "Futura", "Helvetica Neue", "Arial Black", sans-serif';
+    const m = ctx.measureText('abcdefghijklmnopqrstuvwxyz');
+    const a = m.actualBoundingBoxAscent || 0;
+    const d = m.actualBoundingBoxDescent || 0;
+    const h = a + d;
+    _inkRatio = h > 0 ? Math.min(1, h / sampleSize) : 0.78;
+    return _inkRatio;
+  }
+
   // Largest font where no item wraps (scrollWidth > innerW) and the stacked
-  // line-boxes of all items fit vertically. Binary-searched so the menu fills
-  // the rectangle as fully as possible without overflowing in either axis.
+  // line-boxes of all items fit vertically. With line-height = inkRatio, the
+  // line-box matches the actual glyph height — so the rectangle ends up
+  // visually filled by the ink, not by invisible leading.
   function fitMenu() {
     if (menuEl.hidden) return;
     const items = Array.from(menuEl.querySelectorAll('.enter-card__menu-item'));
@@ -386,6 +420,9 @@
     const innerH = menuEl.clientHeight - padTop - padBottom;
     const innerW = menuEl.clientWidth - padLeft - padRight;
     if (innerH <= 0 || innerW <= 0) return;
+
+    const ratio = inkRatio();
+    for (const el of items) el.style.lineHeight = String(ratio);
 
     function setSize(px) {
       for (const el of items) el.style.fontSize = px + 'px';
@@ -402,7 +439,7 @@
     }
 
     let lo = 4;
-    let hi = Math.max(8, innerH);
+    let hi = Math.max(8, innerH / ratio + 2);
     if (!fits(lo)) { setSize(lo); return; }
     for (let i = 0; i < 24; i++) {
       const mid = (lo + hi) / 2;
@@ -410,9 +447,31 @@
     }
     setSize(Math.floor(lo));
   }
-  const fitObserver = new ResizeObserver(fitMenu);
+
+  // Debounced rAF wrapper — avoids measuring mid-resize when the card is
+  // momentarily at a small intermediate size, which previously left the menu
+  // stuck at a tiny font-size.
+  let _fitScheduled = false;
+  function scheduleFit() {
+    if (_fitScheduled) return;
+    _fitScheduled = true;
+    requestAnimationFrame(() => {
+      _fitScheduled = false;
+      fitMenu();
+    });
+  }
+  const fitObserver = new ResizeObserver(scheduleFit);
   fitObserver.observe(menuEl);
-  window.addEventListener('resize', fitMenu);
+  fitObserver.observe(card);
+  let _resizeBurst;
+  window.addEventListener('resize', () => {
+    scheduleFit();
+    clearTimeout(_resizeBurst);
+    _resizeBurst = setTimeout(scheduleFit, 120);
+  });
+  if (document.fonts && document.fonts.ready) {
+    document.fonts.ready.then(() => { _inkRatio = null; scheduleFit(); });
+  }
 })();
 </script>
 
@@ -489,7 +548,9 @@ body.home-template .title-outline-layer {
     display: flex;
     align-items: center;
     justify-content: center;
+    visibility: hidden;
 }
+.enter-card.enter-card--ready { visibility: visible; }
 @media (max-width: 700px) {
     .enter-card { width: min(70vw, 60vh); max-width: 360px; }
 }
