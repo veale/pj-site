@@ -31,3 +31,141 @@ h6,
 .gh-canvas h6 {
     font-family: var(--font-display);
 }
+
+/* Header — full-bleed outline title + always-visible nav */
+
+.gh-head {
+    padding: 0;
+    background: transparent;
+    color: #fff;
+    font-family: var(--font-heading);
+    font-size: 1.6rem;
+    line-height: 1.3em;
+}
+
+.gh-head .gh-head-logo {
+    display: block;
+    width: 100%;
+    padding: 0;
+    margin: 0;
+    line-height: 0;
+    font-size: 0;
+}
+
+.gh-head-title-svg {
+    display: block;
+    width: 100%;
+    height: auto;
+}
+
+.gh-head-title-text {
+    font-family: var(--font-display);
+    font-size: 160px;
+    font-weight: 400;
+    fill: none;
+    stroke: #fff;
+    stroke-width: 2;
+    paint-order: stroke fill;
+    vector-effect: non-scaling-stroke;
+}
+
+.gh-head-nav {
+    position: relative;
+    padding: 1.2vmin 4vmin;
+}
+
+.gh-head-nav-scroll {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 2vmin;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}
+
+.gh-head-nav-scroll::-webkit-scrollbar {
+    display: none;
+}
+
+.gh-head-nav-scroll .nav {
+    display: contents;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.gh-head-nav-scroll .nav li {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.gh-head-nav-scroll a {
+    display: inline-block;
+    padding: 6px 0;
+    color: #fff;
+    text-decoration: none;
+    white-space: nowrap;
+    font-weight: 500;
+    -webkit-text-stroke: 0 transparent;
+    transition: color 120ms ease, -webkit-text-stroke-color 120ms ease;
+}
+
+.gh-head-nav-scroll a:hover,
+.gh-head-nav-scroll a:focus-visible {
+    color: transparent;
+    -webkit-text-stroke: 1px #fff;
+    outline: none;
+}
+
+.gh-head-nav-scroll .nav-current a {
+    box-shadow: 0 -1px 0 0 #fff inset;
+}
+
+.gh-head-nav-arrow {
+    position: absolute;
+    right: 1vmin;
+    top: 50%;
+    transform: translateY(-50%);
+    display: none;
+    background: transparent;
+    border: none;
+    color: #fff;
+    font: inherit;
+    font-size: 2rem;
+    line-height: 1;
+    padding: 6px 10px;
+    cursor: pointer;
+}
+
+.gh-head-nav-arrow:hover {
+    color: transparent;
+    -webkit-text-stroke: 1px #fff;
+}
+
+.gh-head-nav.is-overflowing .gh-head-nav-arrow {
+    display: block;
+}
+
+/* Mobile: wrap nav lines, no horizontal scroll, no arrow */
+@media (max-width: 900px) {
+    .gh-head-nav-scroll {
+        flex-wrap: wrap;
+        overflow-x: visible;
+    }
+    .gh-head-nav.is-overflowing .gh-head-nav-arrow,
+    .gh-head-nav-arrow {
+        display: none;
+    }
+    .gh-burger {
+        display: none !important;
+    }
+}
+
+/* Footer text contrast on orange */
+.gh-foot,
+.gh-foot a {
+    color: #fff;
+}
