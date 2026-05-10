@@ -8,8 +8,18 @@
     font-display: swap;
 }
 
+@font-face {
+    font-family: "Space Grotesk";
+    src: url("../fonts/SpaceGrotesk[wght].woff2") format("woff2-variations"),
+         url("../fonts/SpaceGrotesk[wght].woff2") format("woff2");
+    font-style: normal;
+    font-weight: 300 700;
+    font-display: swap;
+}
+
 :root {
     --font-display: "NaNHoloGigawide Ultra", var(--font-sans-serif);
+    --color-orange: #FF6720;
 }
 
 h1,
@@ -30,6 +40,22 @@ h6,
 .gh-canvas h5,
 .gh-canvas h6 {
     font-family: var(--font-display);
+}
+
+/* Global body — white text on orange */
+body {
+    background: transparent;
+    color: #fff;
+    font-family: var(--font-sans-serif);
+}
+
+a:not([class]) {
+    color: var(--color-orange);
+    background: #fff;
+    padding: 0 0.35em;
+    border-radius: 2px;
+    text-decoration: underline;
+    text-underline-offset: 0.15em;
 }
 
 /* Header — full-bleed outline title + always-visible nav */
@@ -56,6 +82,7 @@ h6,
     display: block;
     width: 100%;
     height: auto;
+    overflow: visible;
 }
 
 .gh-head-title-text {
@@ -106,6 +133,7 @@ h6,
     display: inline-block;
     padding: 6px 0;
     color: #fff;
+    background: transparent;
     text-decoration: none;
     white-space: nowrap;
     font-weight: 500;
@@ -149,11 +177,15 @@ h6,
     display: block;
 }
 
-/* Mobile: wrap nav lines, no horizontal scroll, no arrow */
 @media (max-width: 900px) {
+    .gh-head-nav {
+        padding: 0.6vmin 4vmin 1.2vmin;
+    }
     .gh-head-nav-scroll {
         flex-wrap: wrap;
         overflow-x: visible;
+        gap: 0.4rem 2vmin;
+        row-gap: 0.4rem;
     }
     .gh-head-nav.is-overflowing .gh-head-nav-arrow,
     .gh-head-nav-arrow {
@@ -164,8 +196,102 @@ h6,
     }
 }
 
-/* Footer text contrast on orange */
+/* In-body content links: orange text in white box, underlined */
+.gh-content a,
+.gh-canvas a:not([class]),
+.gh-page a:not(.gh-card-link):not(.gh-head-logo):not(.nav a) {
+    color: var(--color-orange);
+    background: #fff;
+    padding: 0.05em 0.35em;
+    border-radius: 2px;
+    text-decoration: underline;
+    text-underline-offset: 0.15em;
+    box-decoration-break: clone;
+    -webkit-box-decoration-break: clone;
+}
+
+.gh-content a:hover,
+.gh-canvas a:not([class]):hover {
+    background: #fff;
+    color: #000;
+}
+
+/* Footer */
 .gh-foot,
 .gh-foot a {
     color: #fff;
+}
+
+/* ---------------------------------------------------------- */
+/* Article cards — minimal, white bg + orange text, invert on hover */
+/* ---------------------------------------------------------- */
+
+.gh-postfeed {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(300px, 100%), 1fr));
+    gap: 2.5vmin;
+    padding: 6vmin 0;
+}
+
+.gh-postfeed > *:first-child {
+    grid-column: auto;
+}
+
+.gh-card {
+    position: relative;
+    background: #fff;
+    color: var(--color-orange);
+    transition: background 150ms ease, color 150ms ease;
+}
+
+.gh-card-link {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    padding: 1.6rem 1.6rem 2.6rem;
+    color: inherit;
+    text-decoration: none;
+    min-height: 100%;
+}
+
+.gh-card-title {
+    margin: 0 0 0.6rem;
+    font-family: var(--font-sans-serif);
+    font-size: 1.9rem;
+    font-weight: 600;
+    line-height: 1.2;
+    letter-spacing: -0.01em;
+    color: inherit;
+}
+
+.gh-card-excerpt {
+    margin: 0;
+    font-size: 1.35rem;
+    line-height: 1.45;
+    color: inherit;
+}
+
+.gh-card-date {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    background: var(--color-orange);
+    color: #fff;
+    font-family: var(--font-sans-serif);
+    font-size: 1.05rem;
+    font-weight: 500;
+    letter-spacing: 0.05em;
+    padding: 4px 8px;
+    line-height: 1;
+    transition: background 150ms ease, color 150ms ease;
+}
+
+.gh-card:hover {
+    background: var(--color-orange);
+    color: #fff;
+}
+
+.gh-card:hover .gh-card-date {
+    background: #fff;
+    color: var(--color-orange);
 }

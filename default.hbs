@@ -18,21 +18,14 @@
 
 <header id="gh-head" class="gh-head">
     <a class="gh-head-logo" href="{{@site.url}}" aria-label="{{@site.title}}">
-        <svg class="gh-head-title-svg" viewBox="0 0 1000 200" preserveAspectRatio="xMidYMid meet" role="img">
+        <svg class="gh-head-title-svg" preserveAspectRatio="xMidYMid meet" role="img">
             <title>{{@site.title}}</title>
-            <text x="500" y="160" text-anchor="middle" textLength="990" lengthAdjust="spacingAndGlyphs" class="gh-head-title-text">{{@site.title}}</text>
+            <text x="0" y="0" dominant-baseline="text-before-edge" class="gh-head-title-text">{{@site.title}}</text>
         </svg>
     </a>
     <nav class="gh-head-nav" aria-label="Primary">
         <div class="gh-head-nav-scroll">
             {{navigation}}
-            {{#if @site.members_enabled}}
-                {{^if @member}}
-                <a class="gh-nav-item gh-nav-subscribe" href="{{@site.signup_url}}">Subscribe</a>
-                {{else}}
-                <a class="gh-nav-item gh-nav-subscribe" href="#/portal/account">Account</a>
-                {{/if}}
-            {{/if}}
         </div>
         <button class="gh-head-nav-arrow" type="button" aria-label="Scroll navigation right">&rarr;</button>
     </nav>
