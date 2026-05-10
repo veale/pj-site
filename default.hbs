@@ -40,11 +40,11 @@
 </main>
 
 <footer class="gh-foot">
-    <div class="gh-container">
-        <div class="gh-foot-menu">
-            {{navigation type="secondary"}}
-        </div>
-    </div>
+    {{#get "pages" filter="slug:footer-notice" as |footerPages|}}
+        {{#foreach footerPages}}
+            <div class="gh-foot-notice">{{{content}}}</div>
+        {{/foreach}}
+    {{/get}}
 </footer>
 
 </div>

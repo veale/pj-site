@@ -32,40 +32,59 @@ function fitTitle() {
 
 function buildHeadMask() {
     const head = document.getElementById('gh-head');
+    if (!head) return;
     const titleSvg = document.querySelector('.gh-head-title-svg');
-    if (!head || !titleSvg) return;
+    if (!titleSvg) return;
     const text = titleSvg.querySelector('text');
-    if (!text) return;
-    const innerVB = titleSvg.getAttribute('viewBox');
-    if (!innerVB) return;
+    if (!text || !titleSvg.getAttribute('viewBox')) return;
 
     const hr = head.getBoundingClientRect();
-    const tr = text.getBoundingClientRect();
-    if (hr.width === 0 || tr.width === 0) return;
+    const tr = titleSvg.getBoundingClientRect();
+    if (!hr.width || !tr.width) return;
 
+    // Clone the visible title SVG so the mask uses identical glyph metrics
+    // and viewBox positioning. Strip the <title>, set fill black + remove
+    // stroke, and bake the computed font-* into attributes since the
+    // serialized SVG won't see the stylesheet.
     const cs = window.getComputedStyle(text);
-    const family = (cs.fontFamily || 'sans-serif').replace(/"/g, "'");
-    const weight = cs.fontWeight || '400';
-    const size = parseFloat(cs.fontSize) || 160;
-    const content = (text.textContent || '')
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;');
+    const clone = titleSvg.cloneNode(true);
+    clone.removeAttribute('class');
+    clone.removeAttribute('role');
+    Array.from(clone.querySelectorAll('title')).forEach((t) => t.remove());
+    const t2 = clone.querySelector('text');
+    t2.removeAttribute('class');
+    t2.setAttribute('fill', 'black');
+    t2.setAttribute('stroke', 'none');
+    t2.removeAttribute('vector-effect');
+    t2.setAttribute('font-family', (cs.fontFamily || 'sans-serif').replace(/"/g, "'"));
+    t2.setAttribute('font-weight', cs.fontWeight || '400');
+    t2.setAttribute('font-size', String(parseFloat(cs.fontSize) || 160));
 
-    // Outer mask SVG sized to the header. White background = navbar visible.
-    // Nested inner SVG re-renders the live title (same viewBox + glyphs) in
-    // black so luminance masking turns the text region transparent.
-    const innerX = tr.left - hr.left;
-    const innerY = tr.top - hr.top;
-    const inner = `<svg x="${innerX}" y="${innerY}" width="${tr.width}" height="${tr.height}" viewBox="${innerVB}" preserveAspectRatio="xMidYMid meet">` +
-        `<text x="0" y="0" dominant-baseline="text-before-edge" ` +
-        `font-family="${family}" font-weight="${weight}" font-size="${size}" ` +
-        `fill="black">${content}</text></svg>`;
+    // Position the clone at the live title's screen coordinates within the header.
+    const innerX = Math.round(tr.left - hr.left);
+    const innerY = Math.round(tr.top - hr.top);
+    let innerStr = new XMLSerializer().serializeToString(clone);
+    if (!/\sxmlns=/.test(innerStr)) {
+        innerStr = innerStr.replace(/^<svg/, '<svg xmlns="http://www.w3.org/2000/svg"');
+    }
+    innerStr = innerStr.replace(
+        /^<svg/,
+        `<svg x="${innerX}" y="${innerY}" width="${tr.width}" height="${tr.height}"`
+    );
 
-    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${hr.width}" height="${hr.height}" viewBox="0 0 ${hr.width} ${hr.height}">` +
-        `<rect width="100%" height="100%" fill="white"/>${inner}</svg>`;
+    const W = Math.round(hr.width);
+    const H = Math.round(hr.height);
 
-    const url = `url("data:image/svg+xml;utf8,${encodeURIComponent(svg)}")`;
+    // Use an SVG <mask> so the resulting image has true alpha=0 in text shape
+    // and alpha=1 elsewhere — works under either CSS mask-mode (alpha or
+    // luminance), so we don't depend on browser defaults.
+    const outer =
+        `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">` +
+        `<defs><mask id="hm" maskUnits="userSpaceOnUse" x="0" y="0" width="${W}" height="${H}">` +
+        `<rect width="100%" height="100%" fill="white"/>${innerStr}</mask></defs>` +
+        `<rect width="100%" height="100%" fill="white" mask="url(#hm)"/></svg>`;
+
+    const url = `url("data:image/svg+xml;utf8,${encodeURIComponent(outer)}")`;
     head.style.setProperty('--head-mask', url);
 }
 

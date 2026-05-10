@@ -236,16 +236,88 @@ a:not([class]) {
     -webkit-box-decoration-break: clone;
 }
 
-.gh-content a:hover,
-.gh-canvas a:not([class]):hover {
-    background: #fff;
-    color: #000;
+/* Footer — tight notice block fed by Ghost page slug "footer-notice" */
+.gh-foot {
+    padding: 0;
+    margin: 0;
+    display: block;
+    color: #fff;
 }
 
-/* Footer */
-.gh-foot,
 .gh-foot a {
+    color: inherit;
+}
+
+.gh-foot:empty {
+    display: none;
+}
+
+.gh-foot-notice {
+    padding: 0.6em 1em;
+    text-align: center;
     color: #fff;
+    font-family: var(--font-sans-serif);
+    font-size: 1.1rem;
+    line-height: 1.4;
+    max-width: 90ch;
+    margin: 0 auto;
+}
+
+.gh-foot-notice :is(p, ul, ol) {
+    margin: 0.2em 0;
+}
+
+.gh-foot-notice :is(p, ul, ol):first-child { margin-top: 0; }
+.gh-foot-notice :is(p, ul, ol):last-child  { margin-bottom: 0; }
+
+.gh-foot-notice a {
+    color: inherit;
+    text-decoration: underline;
+}
+
+/* Blockquote — italic orange on white, like a fattened link box */
+.gh-content blockquote,
+.gh-canvas > blockquote {
+    position: relative;
+    background: #fff;
+    color: var(--color-orange);
+    font-style: italic;
+    font-family: var(--font-sans-serif);
+    padding: 0.9em 1.2em;
+    margin: 1.2em 0;
+    border-radius: 2px;
+    border: none;
+}
+
+.gh-content blockquote::before,
+.gh-canvas > blockquote::before {
+    content: none !important;
+    display: none !important;
+    background: transparent !important;
+}
+
+/* Links inside blockquotes: inverted box (orange bg, white text) */
+.gh-content blockquote a,
+.gh-canvas > blockquote a,
+.gh-content blockquote a:not([class]),
+.gh-canvas > blockquote a:not([class]) {
+    color: #fff;
+    background: var(--color-orange);
+    padding: 0.05em 0.35em;
+    border-radius: 2px;
+    text-decoration: underline;
+    text-underline-offset: 0.15em;
+    box-decoration-break: clone;
+    -webkit-box-decoration-break: clone;
+    transition: font-weight 120ms ease;
+}
+
+/* Hover-bold body-text links (no colour change) */
+.gh-content a:hover,
+.gh-canvas a:not([class]):hover,
+.gh-content blockquote a:hover,
+.gh-canvas > blockquote a:hover {
+    font-weight: 700;
 }
 
 /* Force post/page body content to Space Grotesk (was serif) */

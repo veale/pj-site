@@ -28,7 +28,6 @@ out vec4 outColor;
 
 vec4 readTex(vec2 uv) {
   vec4 c = texture(src, uv);
-  c.a *= smoothstep(.5, .499, abs(uv.x - .5)) * smoothstep(.5, .499, abs(uv.y - .5));
   return c;
 }
 
@@ -84,7 +83,6 @@ out vec4 outColor;
 
 vec4 readTex(vec2 uv) {
   vec4 c = texture(src, uv);
-  c.a *= smoothstep(.5, .499, abs(uv.x - .5)) * smoothstep(.5, .499, abs(uv.y - .5));
   return c;
 }
 
@@ -124,6 +122,20 @@ function attachVfx() {
         document.querySelectorAll('.hero-gallery__stage img').forEach((el) => {
             vfx.add(el, { shader: itemShader, uniforms: { id: i++ } });
         });
+        // VFX-JS appends a fixed-position canvas to <body>; force it below the
+        // sticky navbar so images don't render over the toolbar.
+        const clampCanvas = () => {
+            document.querySelectorAll('canvas').forEach((c) => {
+                const cs = getComputedStyle(c);
+                if (cs.position === 'fixed') {
+                    c.style.zIndex = '1';
+                    c.style.pointerEvents = 'none';
+                }
+            });
+        };
+        clampCanvas();
+        setTimeout(clampCanvas, 50);
+        setTimeout(clampCanvas, 500);
     } catch (err) {
         console.warn('VFX-JS init failed', err);
     }
