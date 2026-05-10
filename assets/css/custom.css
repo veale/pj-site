@@ -148,8 +148,12 @@ a:not([class]) {
     outline: none;
 }
 
-.gh-head-nav-scroll .nav-current a {
-    box-shadow: 0 -1px 0 0 #fff inset;
+.gh-head-nav-scroll .nav-current a,
+.gh-head-nav-scroll .nav-current a:focus,
+.gh-head-nav-scroll .nav-current a:visited {
+    color: transparent;
+    -webkit-text-stroke: 1px #fff;
+    box-shadow: none;
 }
 
 .gh-head-nav-arrow {
@@ -220,6 +224,20 @@ a:not([class]) {
 .gh-foot,
 .gh-foot a {
     color: #fff;
+}
+
+/* Force post/page body content to Space Grotesk (was serif) */
+.gh-canvas,
+.gh-canvas > p,
+.gh-canvas > ul,
+.gh-canvas > ol,
+.gh-canvas > dl,
+.gh-canvas > blockquote,
+.gh-content p,
+.gh-content li,
+.gh-content blockquote,
+.gh-excerpt {
+    font-family: var(--font-sans-serif) !important;
 }
 
 /* ---------------------------------------------------------- */

@@ -1,0 +1,27 @@
+{{!< default}}
+{{!--
+    News listing. Activated when a Ghost Page has slug "news".
+    Lists all posts as minimal tiled cards.
+--}}
+<div class="gh-page">
+    <div class="gh-container">
+
+        {{#page}}
+            {{#if title}}
+            <header class="gh-page-head">
+                <h1>{{title}}</h1>
+                {{#if custom_excerpt}}<p>{{custom_excerpt}}</p>{{/if}}
+            </header>
+            {{/if}}
+        {{/page}}
+
+        <div class="gh-postfeed">
+            {{#get "posts" limit="all" as |newsPosts|}}
+                {{#foreach newsPosts}}
+                    {{> "card"}}
+                {{/foreach}}
+            {{/get}}
+        </div>
+
+    </div>
+</div>
