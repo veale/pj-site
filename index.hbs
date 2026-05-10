@@ -24,7 +24,9 @@
 </div>
 
 <section class="index-front" data-index-front data-site-title="{{@site.title}}">
-    <div class="pixel-zone" id="pixel-zone" aria-hidden="true"></div>
+    <div class="pixel-zone" id="pixel-zone" aria-hidden="true">
+        <img class="pixel-zone__image" data-pixel-image alt="" />
+    </div>
 
     <div class="enter-card" data-enter-card>
         <div class="enter-card__photo" data-enter-photo></div>
@@ -78,114 +80,54 @@
   }
 
   const stage = document.getElementById('pixel-zone');
-  const off = document.createElement('canvas');
-  const offCtx = off.getContext('2d');
+  const bigCanvas = document.createElement('canvas');
+  bigCanvas.className = 'pixel-zone__canvas';
+  stage.appendChild(bigCanvas);
+  const bigCtx = bigCanvas.getContext('2d');
 
+  // Cache letter widths per font size (rows of same height share metrics).
+  const metricsCache = new Map();
+  function getMetrics(fontStr) {
+    let m = metricsCache.get(fontStr);
+    if (m) return m;
+    bigCtx.font = fontStr;
+    const widths = [];
+    let total = 0;
+    for (const ch of TEXT) {
+      const w = bigCtx.measureText(ch).width;
+      widths.push(w);
+      total += w;
+    }
+    m = { widths, total };
+    metricsCache.set(fontStr, m);
+    return m;
+  }
+
+  function getColor(rowIdx, instanceIdx) {
+    if (state.colorCount <= 1) return '#FFFFFF';
+    const n = Math.min(state.colorCount, PALETTE_DARK.length);
+    return PALETTE_DARK[hash(instanceIdx + rowIdx * 1009) % n];
+  }
+  function isOutline(rowIdx, instanceIdx) {
+    if (state.outlineProp <= 0) return false;
+    if (state.outlineProp >= 100) return true;
+    const r = hash(instanceIdx * 7919 + rowIdx * 5483 + 314159) % 1000;
+    return r < state.outlineProp * 10;
+  }
+
+  // A row is just a logical scroller — no DOM canvas of its own. All rows
+  // render into the single big canvas, so glyph ascenders/descenders never
+  // clip at row boundaries (fixes iOS letter cutoff at row edges).
   class Row {
     constructor(direction, idx) {
       this.direction = direction;
       this.idx = idx;
       this.position = (Math.random() - 0.5) * 4000;
-      this.canvas = document.createElement('canvas');
-      this.canvas.className = 'pixel-zone__row';
-      this.ctx = this.canvas.getContext('2d');
-      stage.appendChild(this.canvas);
-      this._fontKey = '';
-      this._letterWidths = [];
-      this._wordWidth = 0;
-      this.rowHeight = 0;
-      this.rowHCanvas = 0;
-      this.canvasHCanvas = 0;
-      this.rowYCenter = 0;
-    }
-    layout(rowTop, rowHeight, viewportWidth) {
-      const canvasHCSS = rowHeight;
-      this.canvas.style.top = rowTop + 'px';
-      this.canvas.style.height = canvasHCSS + 'px';
-      this.canvas.style.width = viewportWidth + 'px';
-      this.canvas.width = Math.max(1, Math.floor(viewportWidth * DPR));
-      this.canvas.height = Math.max(1, Math.floor(canvasHCSS * DPR));
-      this.rowHeight = rowHeight;
-      this.rowHCanvas = rowHeight * DPR;
-      this.canvasHCanvas = canvasHCSS * DPR;
-      this.rowYCenter = this.canvasHCanvas / 2;
-      this._fontKey = '';
-    }
-    measureLetters(fontStr) {
-      if (this._fontKey === fontStr) return;
-      this._fontKey = fontStr;
-      this.ctx.font = fontStr;
-      this._letterWidths = [];
-      let total = 0;
-      for (const ch of TEXT) {
-        const w = this.ctx.measureText(ch).width;
-        this._letterWidths.push(w);
-        total += w;
-      }
-      this._wordWidth = total;
-    }
-    getColor(instanceIdx) {
-      if (state.colorCount <= 1) return '#FFFFFF';
-      const n = Math.min(state.colorCount, PALETTE_DARK.length);
-      return PALETTE_DARK[hash(instanceIdx + this.idx * 1009) % n];
-    }
-    isOutline(instanceIdx) {
-      if (state.outlineProp <= 0) return false;
-      if (state.outlineProp >= 100) return true;
-      const r = hash(instanceIdx * 7919 + this.idx * 5483 + 314159) % 1000;
-      return r < state.outlineProp * 10;
+      this.rowHeight = 0;          // CSS px
+      this.rowYCenterCss = 0;      // CSS px (centre of this row, viewport coords)
     }
     update(dt) {
       this.position += this.direction * state.speed * DPR * dt;
-    }
-    draw() {
-      const ctx = this.ctx;
-      const w = this.canvas.width;
-      const h = this.canvas.height;
-      ctx.clearRect(0, 0, w, h);
-
-      const fontSize = this.rowHCanvas * state.fontScale;
-      const fontFam = '"NaNHoloGigawide Ultra", "NaNHoloGigawide", "Futura", "Helvetica Neue", "Arial Black", sans-serif';
-      const fontStr = '900 ' + fontSize + 'px ' + fontFam;
-
-      this.measureLetters(fontStr);
-      const wordWidth = this._wordWidth;
-      if (wordWidth <= 0) return;
-
-      const startX = this.position;
-      const firstInst = Math.floor((-startX) / wordWidth) - 1;
-      const lastInst = Math.ceil((w - startX) / wordWidth) + 1;
-
-      ctx.textAlign = 'left';
-      ctx.textBaseline = 'middle';
-      ctx.lineJoin = 'round';
-
-      const yCenter = this.rowYCenter;
-      const canvasThickness = state.outlineThick * DPR;
-
-      for (let i = firstInst; i <= lastInst; i++) {
-        const instX = startX + i * wordWidth;
-        const color = this.getColor(i);
-        const outline = this.isOutline(i);
-
-        let cx = instX;
-        for (let j = 0; j < TEXT.length; j++) {
-          const ch = TEXT[j];
-          const chW = this._letterWidths[j];
-          if (cx + chW < 0 || cx > w) { cx += chW; continue; }
-          ctx.font = fontStr;
-          ctx.imageSmoothingEnabled = true;
-          if (outline) {
-            ctx.strokeStyle = color;
-            ctx.lineWidth = canvasThickness;
-            ctx.strokeText(ch, cx, yCenter);
-          } else {
-            ctx.fillStyle = color;
-            ctx.fillText(ch, cx, yCenter);
-          }
-          cx += chW;
-        }
-      }
     }
   }
 
@@ -194,6 +136,11 @@
   function layoutRows() {
     const vw = window.innerWidth;
     const vh = window.innerHeight;
+    bigCanvas.style.width = vw + 'px';
+    bigCanvas.style.height = vh + 'px';
+    bigCanvas.width = Math.max(1, Math.floor(vw * DPR));
+    bigCanvas.height = Math.max(1, Math.floor(vh * DPR));
+
     const baseH = vh * (state.rowHeightVh / 100);
     const heights = [];
     let cumH = 0, i = 0;
@@ -209,15 +156,107 @@
       const dir = rows.length % 2 === 0 ? -1 : 1;
       rows.push(new Row(dir, rows.length));
     }
-    while (rows.length > target) {
-      const r = rows.pop();
-      stage.removeChild(r.canvas);
-    }
+    while (rows.length > target) rows.pop();
+
     let cumTop = 0;
     rows.forEach((row, idx) => {
-      row.layout(cumTop, heights[idx], vw);
+      row.rowHeight = heights[idx];
+      row.rowYCenterCss = cumTop + heights[idx] / 2;
       cumTop += heights[idx];
     });
+
+    metricsCache.clear();
+  }
+
+  function drawAll() {
+    const w = bigCanvas.width;
+    const h = bigCanvas.height;
+
+    // Opaque black backdrop — image beneath only shows through where we
+    // explicitly punch holes (the interior of outlined letters).
+    bigCtx.globalCompositeOperation = 'source-over';
+    bigCtx.fillStyle = state.bgColor;
+    bigCtx.fillRect(0, 0, w, h);
+
+    bigCtx.textAlign = 'left';
+    bigCtx.textBaseline = 'middle';
+    bigCtx.lineJoin = 'round';
+
+    const canvasThickness = state.outlineThick * DPR;
+    const fontFam = '"NaNHoloGigawide Ultra", "NaNHoloGigawide", "Futura", "Helvetica Neue", "Arial Black", sans-serif';
+
+    // Pre-compute per-row glyph layout to avoid recomputing across passes.
+    const layouts = rows.map((row) => {
+      const rowHCanvas = row.rowHeight * DPR;
+      const fontSize = rowHCanvas * state.fontScale;
+      const fontStr = '900 ' + fontSize + 'px ' + fontFam;
+      const { widths, total: wordWidth } = getMetrics(fontStr);
+      const yCenter = row.rowYCenterCss * DPR;
+      const startX = row.position;
+      const firstInst = wordWidth > 0 ? Math.floor((-startX) / wordWidth) - 1 : 0;
+      const lastInst = wordWidth > 0 ? Math.ceil((w - startX) / wordWidth) + 1 : -1;
+      return { row, fontStr, widths, wordWidth, yCenter, startX, firstInst, lastInst };
+    });
+
+    // Pass 1: punch transparent holes for outlined-letter interiors.
+    bigCtx.globalCompositeOperation = 'destination-out';
+    bigCtx.fillStyle = '#000';
+    for (const L of layouts) {
+      if (L.wordWidth <= 0) continue;
+      bigCtx.font = L.fontStr;
+      for (let i = L.firstInst; i <= L.lastInst; i++) {
+        if (!isOutline(L.row.idx, i)) continue;
+        let cx = L.startX + i * L.wordWidth;
+        for (let j = 0; j < TEXT.length; j++) {
+          const ch = TEXT[j];
+          const chW = L.widths[j];
+          if (cx + chW < 0 || cx > w) { cx += chW; continue; }
+          bigCtx.fillText(ch, cx, L.yCenter);
+          cx += chW;
+        }
+      }
+    }
+
+    // Pass 2: filled letters (opaque, covers image).
+    bigCtx.globalCompositeOperation = 'source-over';
+    for (const L of layouts) {
+      if (L.wordWidth <= 0) continue;
+      bigCtx.font = L.fontStr;
+      for (let i = L.firstInst; i <= L.lastInst; i++) {
+        if (isOutline(L.row.idx, i)) continue;
+        const color = getColor(L.row.idx, i);
+        let cx = L.startX + i * L.wordWidth;
+        for (let j = 0; j < TEXT.length; j++) {
+          const ch = TEXT[j];
+          const chW = L.widths[j];
+          if (cx + chW < 0 || cx > w) { cx += chW; continue; }
+          bigCtx.fillStyle = color;
+          bigCtx.fillText(ch, cx, L.yCenter);
+          cx += chW;
+        }
+      }
+    }
+
+    // Pass 3: stroke the outline on top of the cut-out (covers image where
+    // the outline ink itself sits, so the stroke reads cleanly).
+    bigCtx.lineWidth = canvasThickness;
+    for (const L of layouts) {
+      if (L.wordWidth <= 0) continue;
+      bigCtx.font = L.fontStr;
+      for (let i = L.firstInst; i <= L.lastInst; i++) {
+        if (!isOutline(L.row.idx, i)) continue;
+        const color = getColor(L.row.idx, i);
+        let cx = L.startX + i * L.wordWidth;
+        for (let j = 0; j < TEXT.length; j++) {
+          const ch = TEXT[j];
+          const chW = L.widths[j];
+          if (cx + chW < 0 || cx > w) { cx += chW; continue; }
+          bigCtx.strokeStyle = color;
+          bigCtx.strokeText(ch, cx, L.yCenter);
+          cx += chW;
+        }
+      }
+    }
   }
 
   let lastT = 0;
@@ -225,7 +264,8 @@
     if (!lastT) lastT = t;
     const dt = Math.min(0.05, (t - lastT) / 1000);
     lastT = t;
-    for (const row of rows) { row.update(dt); row.draw(); }
+    for (const row of rows) row.update(dt);
+    drawAll();
     requestAnimationFrame(frame);
   }
 
@@ -249,14 +289,16 @@
   const pixelCanvas = document.querySelector('[data-enter-pixel]');
   const menuEl = document.querySelector('[data-enter-menu]');
 
-  // First image of home-hero
+  // First image of home-hero — used as the masked backfill behind the
+  // outlined scrolling text. The enter card itself is a plain orange box.
   const srcImg = document.querySelector('.index-hero-source img');
   let imgUrl = null;
+  const bgImageEl = document.querySelector('[data-pixel-image]');
   if (srcImg) {
     imgUrl = srcImg.getAttribute('src');
-    photoEl.style.backgroundImage = 'url(' + imgUrl + ')';
-  } else {
-    photoEl.classList.add('enter-card__photo--empty');
+    if (bgImageEl) bgImageEl.src = imgUrl;
+  } else if (bgImageEl) {
+    bgImageEl.remove();
   }
 
   // Build nav menu from cloned site navigation
@@ -272,8 +314,7 @@
     });
   }
 
-  // Pixelate transition: render image at progressively smaller resolutions,
-  // scale back up with nearest-neighbour, then crossfade into menu panel.
+  // Pixel-dissolve from orange → white, then reveal the menu panel.
   function pixelateAndReveal() {
     if (!card.classList.contains('enter-card--ready')) return;
     card.classList.add('enter-card--transitioning');
@@ -288,76 +329,50 @@
     pixelCanvas.hidden = false;
 
     const ctx = pixelCanvas.getContext('2d');
-    const img = new Image();
-    img.crossOrigin = 'anonymous';
-    img.onload = () => {
-      photoEl.style.visibility = 'hidden';
-      linkEl.style.visibility = 'hidden';
+    ctx.fillStyle = '#FF6720';
+    ctx.fillRect(0, 0, w, h);
 
-      const aspect = img.width / img.height;
-      const boxAspect = w / h;
-      let sx, sy, sw, sh;
-      if (aspect > boxAspect) {
-        sh = img.height;
-        sw = img.height * boxAspect;
-        sx = (img.width - sw) / 2;
-        sy = 0;
-      } else {
-        sw = img.width;
-        sh = img.width / boxAspect;
-        sx = 0;
-        sy = (img.height - sh) / 2;
-      }
-
-      const steps = [1, 2, 4, 8, 16, 28, 48, 80];
-      let i = 0;
-      function step() {
-        const px = steps[i];
-        const tw = Math.max(1, Math.floor(w / px));
-        const th = Math.max(1, Math.floor(h / px));
-        const tmp = document.createElement('canvas');
-        tmp.width = tw; tmp.height = th;
-        const tctx = tmp.getContext('2d');
-        tctx.imageSmoothingEnabled = false;
-        tctx.drawImage(img, sx, sy, sw, sh, 0, 0, tw, th);
-        ctx.imageSmoothingEnabled = false;
-        ctx.clearRect(0, 0, w, h);
-        ctx.drawImage(tmp, 0, 0, tw, th, 0, 0, w, h);
-        i++;
-        if (i < steps.length) {
-          setTimeout(step, 70);
-        } else {
-          // Reveal menu panel
-          menuEl.hidden = false;
-          requestAnimationFrame(() => {
-            card.classList.add('enter-card--revealed');
-          });
-        }
-      }
-      step();
-    };
-    img.onerror = () => {
-      photoEl.style.visibility = 'hidden';
-      linkEl.style.visibility = 'hidden';
-      menuEl.hidden = false;
-      requestAnimationFrame(() => card.classList.add('enter-card--revealed'));
-    };
-    if (imgUrl) {
-      img.src = imgUrl;
-    } else {
-      img.onerror();
+    const cellSize = Math.max(8, Math.round(Math.min(w, h) / 22));
+    const cols = Math.ceil(w / cellSize);
+    const rows = Math.ceil(h / cellSize);
+    const cells = [];
+    for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) cells.push([c, r]);
+    for (let i = cells.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      const tmp = cells[i]; cells[i] = cells[j]; cells[j] = tmp;
     }
+
+    photoEl.style.visibility = 'hidden';
+    linkEl.style.visibility = 'hidden';
+
+    const totalFrames = 26;
+    const perFrame = Math.ceil(cells.length / totalFrames);
+    let idx = 0;
+    function step() {
+      ctx.fillStyle = '#fff';
+      for (let k = 0; k < perFrame && idx < cells.length; k++, idx++) {
+        const [c, r] = cells[idx];
+        ctx.fillRect(c * cellSize, r * cellSize, cellSize, cellSize);
+      }
+      if (idx < cells.length) {
+        requestAnimationFrame(step);
+      } else {
+        menuEl.hidden = false;
+        requestAnimationFrame(() => card.classList.add('enter-card--revealed'));
+      }
+    }
+    requestAnimationFrame(step);
   }
 
-  if (imgUrl) card.classList.add('enter-card--ready');
-  else card.classList.add('enter-card--ready', 'enter-card--no-photo');
+  card.classList.add('enter-card--ready');
 
   linkEl.addEventListener('click', (e) => {
     e.preventDefault();
     pixelateAndReveal();
   });
 
-  // Size menu items so they fill the rectangle vertically and fit horizontally
+  // Size menu items so they fill the rectangle as tightly as possible
+  // while keeping all items visible (no horizontal overflow).
   function fitMenu() {
     if (menuEl.hidden) return;
     const items = menuEl.querySelectorAll('.enter-card__menu-item');
@@ -369,13 +384,10 @@
     const padRight = parseFloat(cs.paddingRight) || 0;
     const innerH = menuEl.clientHeight - padTop - padBottom;
     const innerW = menuEl.clientWidth - padLeft - padRight;
-    // Start from per-item height, then shrink to fit horizontally
+    // Largest size such that N * size fits vertically with tight line-height.
     let size = Math.floor(innerH / items.length);
-    items.forEach((el) => {
-      el.style.fontSize = size + 'px';
-      el.style.lineHeight = '1';
-    });
-    // Shrink if any item overflows horizontally
+    items.forEach((el) => { el.style.fontSize = size + 'px'; });
+    // Shrink to fit horizontally.
     let safety = 60;
     while (safety-- > 0) {
       let overflow = false;
@@ -426,11 +438,25 @@ body.home-template .gh-main {
     z-index: 0;
     pointer-events: none;
     background: #0a0a0a;
+    overflow: hidden;
 }
-.pixel-zone__row {
+.pixel-zone__image {
     position: absolute;
-    left: 0;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center center;
     display: block;
+    z-index: 0;
+    user-select: none;
+    -webkit-user-drag: none;
+}
+.pixel-zone__canvas {
+    position: absolute;
+    inset: 0;
+    display: block;
+    z-index: 1;
 }
 
 /* Hide the global title-mask layers on the front page — they reference the
@@ -459,9 +485,7 @@ body.home-template .title-outline-layer {
 .enter-card__photo {
     position: absolute;
     inset: 0;
-    background-color: #222;
-    background-size: cover;
-    background-position: center;
+    background-color: #FF6720;
 }
 .enter-card__pixel {
     position: absolute;
@@ -481,10 +505,14 @@ body.home-template .title-outline-layer {
     font-size: clamp(2.2rem, 6vmin, 5.2rem);
     letter-spacing: 0.02em;
     padding: 0.3em 0.6em;
-    -webkit-text-stroke: 2px #fff;
-    transition: color 160ms ease, opacity 200ms ease;
+    -webkit-text-stroke: 0 #fff;
+    transition: color 120ms ease, -webkit-text-stroke-width 120ms ease, opacity 200ms ease;
 }
-.enter-card__link:hover { color: transparent; }
+.enter-card__link:hover,
+.enter-card__link:active {
+    color: transparent;
+    -webkit-text-stroke-width: 2px;
+}
 .enter-card--transitioning .enter-card__link { opacity: 0; pointer-events: none; }
 
 /* Menu reveal */
@@ -495,16 +523,15 @@ body.home-template .title-outline-layer {
     display: flex;
     flex-direction: column;
     align-items: stretch;
-    justify-content: space-between;
+    justify-content: center;
     opacity: 0;
     transition: opacity 260ms ease;
-    padding: 4% 6%;
+    padding: 2% 4%;
     gap: 0;
 }
 .enter-card--revealed .enter-card__menu { opacity: 1; }
 .enter-card--revealed .enter-card__pixel { opacity: 0; transition: opacity 260ms ease; }
 .enter-card__menu-item {
-    flex: 1 1 0;
     display: flex;
     align-items: center;
     justify-content: flex-start;
@@ -512,11 +539,13 @@ body.home-template .title-outline-layer {
     font-weight: 900;
     text-decoration: none;
     text-transform: lowercase;
-    line-height: 1;
+    line-height: 0.95;
     color: transparent;
-    -webkit-text-stroke: 2px #000;
+    -webkit-text-stroke: 1px #000;
     transition: color 140ms ease, -webkit-text-stroke-width 140ms ease;
     white-space: nowrap;
+    margin: 0;
+    padding: 0;
 }
 .enter-card__menu-item:hover {
     color: #000;
