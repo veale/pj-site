@@ -1489,6 +1489,9 @@ body.pj-route-page .gh-card-meta {
 }
 body.pj-route-page .gh-card-date {
     display: inline !important;
+    position: static !important; /* defeat the default absolute right/bottom */
+    right: auto !important;
+    bottom: auto !important;
     background: none !important;
     color: inherit !important;
     padding: 0 0 0 0.4em !important;
@@ -1498,7 +1501,9 @@ body.pj-route-page .gh-card-date {
     font-style: italic !important;
     opacity: 0.7;
     letter-spacing: 0 !important;
+    line-height: inherit !important;
 }
+body.pj-route-page .gh-card-date time { line-height: inherit !important; }
 
 /* Page / post / article headers: always anchored top-left, no centering, no
  * giant vertical padding. */
@@ -1527,6 +1532,55 @@ body.pj-route-page .gh-content {
     padding: 0 !important;
     margin: 0 !important;
     text-align: left !important;
+}
+/* Defeat the Ghost canvas grid that adds 4vw side gaps to every direct
+ * child of .gh-canvas / .gh-content. Force block layout so paragraphs sit
+ * edge-to-edge inside the rectangle. */
+body.pj-route-page .gh-canvas,
+body.pj-route-page .gh-content,
+body.pj-route-page .kg-width-full.kg-content-wide {
+    display: block !important;
+    grid-template-columns: none !important;
+    --gap: 0 !important;
+    --main: 100% !important;
+    --wide: 0 !important;
+    --full: 0 !important;
+}
+body.pj-route-page .gh-canvas > *,
+body.pj-route-page .gh-content > * {
+    grid-column: auto !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    margin-top: 0 !important;
+}
+body.pj-route-page .gh-canvas > * + *,
+body.pj-route-page .gh-content > * + * {
+    margin-top: 0.5em !important;
+}
+body.pj-route-page .gh-content > ul,
+body.pj-route-page .gh-content > ol,
+body.pj-route-page .gh-content > dl {
+    padding-left: 0 !important;
+}
+/* The Ghost-content paragraphs/lists/blockquotes carry their own large
+ * font-size from ghost/content.css. Bring them back to the compact size. */
+body.pj-route-page .gh-canvas > p,
+body.pj-route-page .gh-canvas > blockquote,
+body.pj-route-page .gh-canvas > ul,
+body.pj-route-page .gh-canvas > ol,
+body.pj-route-page .gh-canvas > dl,
+body.pj-route-page .gh-content > p,
+body.pj-route-page .gh-content > blockquote,
+body.pj-route-page .gh-content > ul,
+body.pj-route-page .gh-content > ol,
+body.pj-route-page .gh-content > dl,
+body.pj-route-page .gh-content p {
+    font-size: 13px !important;
+    line-height: 1.35 !important;
+    font-family: var(--font-sans-serif) !important;
+    font-weight: 400 !important;
 }
 body.pj-route-page .gh-feature-image { margin: 0.4em 0; }
 body.pj-route-page .gh-post-date {
