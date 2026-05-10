@@ -65,11 +65,30 @@ a:not([class]) {
     top: 0;
     z-index: 100;
     padding: 0;
-    background: #FF6720;
+    background: transparent;
     color: #fff;
     font-family: var(--font-heading);
     font-size: 1.6rem;
     line-height: 1.3em;
+    isolation: isolate;
+}
+
+/* Orange backdrop for the navbar with a text-shaped hole punched through it. */
+.gh-head::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    background: #FF6720;
+    pointer-events: none;
+    -webkit-mask-image: var(--head-mask, none);
+            mask-image: var(--head-mask, none);
+    -webkit-mask-size: 100% 100%;
+            mask-size: 100% 100%;
+    -webkit-mask-repeat: no-repeat;
+            mask-repeat: no-repeat;
+    -webkit-mask-mode: luminance;
+            mask-mode: luminance;
 }
 
 .gh-head .gh-head-logo {

@@ -16,24 +16,17 @@
 }
 
 .hero-gallery__item {
-    margin: 12vh auto;
-    width: min(80%, 1100px);
-    display: flex;
-    justify-content: center;
-}
-
-.hero-gallery__item:first-child {
-    margin-top: 6vh;
-}
-
-.hero-gallery__item:last-child {
-    margin-bottom: 10vh;
+    margin: 0;
+    padding: 0;
+    width: 100vw;
+    display: block;
 }
 
 .hero-gallery__item img {
-    width: 100%;
+    width: 100vw;
     height: auto;
     display: block;
+    margin: 0;
 }
 
 /* Title mask layer is no longer used; keep the element hidden by default. */

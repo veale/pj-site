@@ -95,7 +95,7 @@ void main() {
   vec2 uvr = uv, uvg = uv, uvb = uv;
 
   float r = rand(vec2(floor(time * 12.), id));
-  if (r > 0.93) {
+  if (r > 0.89) {
     float y = sin(floor(uv.y / 0.07)) + sin(floor(uv.y / 0.003 + time));
     float f = rand(vec2(y, floor(time * 5.0) + id)) * 2. - 1.;
     uvr.x += f * 0.1;
