@@ -1140,15 +1140,17 @@ body { background: #0a0a0a; }
     display: none;
 }
 
-/* "menu" tab — a small white tab popping up above the top-left of the rect.
- * Visible only on non-home routes. */
+/* "menu" tab — a small black tab popping up above the top-right of the
+ * rect. Default state is filled black; on hover it inverts to a white-fill
+ * outlined tab. Visible only on non-home routes. */
 .pj-menu-tab {
     position: absolute;
     z-index: 3;
     top: -22px;
-    left: 0;
-    background: #fff;
-    color: #000;
+    right: 0;
+    background: #000;
+    color: #fff;
+    border: 1px solid #000;
     font-family: "NaNHoloGigawide Ultra", var(--font-sans-serif);
     font-weight: 900;
     text-transform: lowercase;
@@ -1158,8 +1160,11 @@ body { background: #0a0a0a; }
     font-size: 14px;
     letter-spacing: 0.02em;
     display: none;
+    transition: background 120ms ease, color 120ms ease,
+                -webkit-text-stroke-width 120ms ease;
 }
 .pj-menu-tab:hover {
+    background: #fff;
     color: transparent;
     -webkit-text-stroke: 1px #000;
 }
@@ -1266,31 +1271,45 @@ body.pj-route-page .pj-rect__stage {
     overflow: auto;
     -webkit-overflow-scrolling: touch;
     scrollbar-width: none;
-}
-body.pj-route-page .pj-rect__stage::-webkit-scrollbar { display: none; }
-
-body.pj-route-page .pj-rect__stage > * {
-    padding: 16px 14px;
-}
-/* Reset typography for compact pages — uniform body size, header hierarchy
- * expressed via weight/style/outline rather than scale. */
-body.pj-route-page .pj-rect__stage {
     font-family: var(--font-sans-serif);
     font-size: 13px;
     line-height: 1.35;
+    /* Force-wrap stubbornly long tokens (emails, URLs, hashes) at any point
+     * rather than overflowing horizontally. */
+    overflow-wrap: anywhere;
+    word-break: break-word;
+    hyphens: auto;
 }
-body.pj-route-page .pj-rect__stage a {
+body.pj-route-page .pj-rect__stage::-webkit-scrollbar { display: none; }
+body.pj-route-page .pj-rect__stage > * { padding: 8px 6px; }
+
+/* Body links — flat black, underlined. On hover they become a black tag
+ * with white text (instead of a white outline, which would disappear into
+ * the rectangle background). */
+body.pj-route-page .pj-rect__stage a,
+body.pj-route-page .pj-rect__stage a:not([class]) {
     color: #000;
-    text-decoration: underline;
     background: none;
+    text-decoration: underline;
+    text-underline-offset: 0.12em;
     padding: 0;
     border-radius: 0;
+    -webkit-text-stroke: 0;
+    transition: background 120ms ease, color 120ms ease;
 }
-body.pj-route-page .pj-rect__stage a:hover {
-    color: transparent;
-    -webkit-text-stroke: 1px #000;
+body.pj-route-page .pj-rect__stage a:hover,
+body.pj-route-page .pj-rect__stage a:focus-visible,
+body.pj-route-page .pj-rect__stage a:not([class]):hover {
+    color: #fff;
+    background: #000;
     text-decoration: none;
+    -webkit-text-stroke: 0;
+    padding: 0 0.18em;
+    margin: 0 -0.18em;
+    border-radius: 0;
 }
+
+/* Headings — same family as body, hierarchy via weight/style not size. */
 body.pj-route-page .pj-rect__stage h1,
 body.pj-route-page .pj-rect__stage h2,
 body.pj-route-page .pj-rect__stage h3,
@@ -1299,28 +1318,31 @@ body.pj-route-page .pj-rect__stage h5,
 body.pj-route-page .pj-rect__stage h6,
 body.pj-route-page .pj-rect__stage .gh-title,
 body.pj-route-page .pj-rect__stage .gh-card-title {
+    font-family: var(--font-sans-serif);
     font-size: 14px;
     line-height: 1.15;
-    margin: 0 0 0.4em;
-    font-family: var(--font-sans-serif);
+    margin: 0 0 0.35em;
     letter-spacing: 0;
     text-transform: none;
+    color: #000;
+    -webkit-text-stroke: 0;
 }
+/* h1: bold, all caps, "thick" body font. */
 body.pj-route-page .pj-rect__stage h1,
 body.pj-route-page .pj-rect__stage .gh-title {
-    font-weight: 900;
-    -webkit-text-stroke: 0.6px #000;
+    font-weight: 800;
     text-transform: uppercase;
+    letter-spacing: 0.02em;
 }
+/* h2: slightly less bold, normal case. */
 body.pj-route-page .pj-rect__stage h2 {
-    font-weight: 700;
-    text-transform: uppercase;
+    font-weight: 600;
+    text-transform: none;
 }
+/* h3: nearly regular weight, italics. */
 body.pj-route-page .pj-rect__stage h3 {
-    font-weight: 400;
-    color: transparent;
-    -webkit-text-stroke: 1px #000;
-    text-transform: uppercase;
+    font-weight: 500;
+    font-style: italic;
 }
 body.pj-route-page .pj-rect__stage h4 {
     font-weight: 700;
@@ -1336,17 +1358,16 @@ body.pj-route-page .pj-rect__stage h6 {
     font-style: italic;
     font-variant: small-caps;
 }
-body.pj-route-page .pj-rect__stage p {
-    margin: 0 0 0.6em;
-}
+
+body.pj-route-page .pj-rect__stage p { margin: 0 0 0.55em; }
 body.pj-route-page .pj-rect__stage img,
 body.pj-route-page .pj-rect__stage picture {
     max-width: 100%;
     height: auto;
     display: block;
-    margin: 0.6em 0;
+    margin: 0.55em 0;
 }
-body.pj-route-page .pj-rect__stage figure { margin: 0.6em 0; }
+body.pj-route-page .pj-rect__stage figure { margin: 0.55em 0; }
 body.pj-route-page .pj-rect__stage figcaption {
     font-size: 11px;
     font-style: italic;
@@ -1355,36 +1376,66 @@ body.pj-route-page .pj-rect__stage figcaption {
 body.pj-route-page .pj-rect__stage hr {
     border: 0;
     border-top: 1px solid #000;
-    margin: 0.8em 0;
+    margin: 0.7em 0;
 }
 body.pj-route-page .pj-rect__stage ul,
 body.pj-route-page .pj-rect__stage ol {
-    margin: 0 0 0.6em;
-    padding-left: 1.3em;
+    margin: 0 0 0.55em;
+    padding-left: 1.1em;
 }
 
-/* News listing — collapse cards to inline "title · venue", wrapped. */
+/* Blockquote — italic, slightly smaller, vertical black rule on the left. */
+body.pj-route-page .pj-rect__stage blockquote {
+    margin: 0.6em 0;
+    padding: 0 0 0 10px;
+    border-left: 1px solid #000;
+    color: #000;
+    font-style: italic;
+    font-size: 12px;
+    line-height: 1.35;
+    background: none;
+}
+body.pj-route-page .pj-rect__stage blockquote p { margin: 0 0 0.4em; }
+body.pj-route-page .pj-rect__stage blockquote p:last-child { margin: 0; }
+
+/* News listing — bullet list. Each row: title (bold link), then date.
+ * Wraps naturally when titles are long. */
 body.pj-route-page .gh-postfeed {
-    display: block;
+    list-style: none;
     margin: 0;
     padding: 0;
 }
 body.pj-route-page .gh-card {
-    display: inline;
+    display: block;
     background: none !important;
     color: #000 !important;
-    margin: 0;
-    padding: 0;
+    margin: 0 0 0.3em;
+    padding: 0 0 0 12px;
     border: 0;
+    position: relative;
+}
+body.pj-route-page .gh-card::before {
+    content: "\2022"; /* bullet */
+    position: absolute;
+    left: 0;
+    top: 0;
+    color: #000;
+    font-weight: 700;
 }
 body.pj-route-page .gh-card-link {
     display: inline;
     color: #000;
     text-decoration: none;
+    font-weight: 700;
+    background: none;
+    padding: 0;
 }
 body.pj-route-page .gh-card-link:hover {
-    color: transparent;
-    -webkit-text-stroke: 1px #000;
+    color: #fff;
+    background: #000;
+    padding: 0 0.18em;
+    margin: 0 -0.18em;
+    -webkit-text-stroke: 0;
 }
 body.pj-route-page .gh-card-title {
     display: inline;
@@ -1394,31 +1445,23 @@ body.pj-route-page .gh-card-title {
     -webkit-text-stroke: 0;
     margin: 0;
 }
-body.pj-route-page .gh-card-excerpt {
-    display: inline;
-    font: inherit;
-    margin: 0;
-}
+body.pj-route-page .gh-card-excerpt { display: none; }
 body.pj-route-page .gh-card-date {
     display: inline;
     background: none;
     color: #000;
-    padding: 0;
-    font: inherit;
+    padding: 0 0 0 0.4em;
     margin: 0;
+    font: inherit;
+    font-weight: 400;
     font-style: italic;
     opacity: 0.7;
 }
-/* Title · excerpt, comma-separated, wrapped inline. */
-body.pj-route-page .gh-card::after { content: " · "; }
-body.pj-route-page .gh-card:last-child::after { content: ""; }
-body.pj-route-page .gh-card-title::after { content: " — "; font-weight: 400; }
 
 /* Compact article footer, header. */
 body.pj-route-page .gh-header { padding: 0 0 0.4em; text-align: left; }
-body.pj-route-page .gh-canvas, body.pj-route-page .gh-container {
-    max-width: 100%; padding: 0; margin: 0;
-}
+body.pj-route-page .gh-canvas,
+body.pj-route-page .gh-container { max-width: 100%; padding: 0; margin: 0; }
 body.pj-route-page .gh-feature-image { margin: 0.4em 0; }
 body.pj-route-page .gh-post-date {
     display: inline-block; background: none; color: #000;
@@ -1437,3 +1480,69 @@ body.pj-route-page .gh-readmore a {
     display: inline-flex; align-items: center; gap: 4px;
 }
 body.pj-route-page .gh-readmore svg { width: 12px; height: 12px; }
+
+/* Bookmark cards inside articles — hyper-minimalist. No image, no excerpt,
+ * no metadata. Just the title as an inline black link that turns into a
+ * black-tag on hover (matching body links). The default theme styling
+ * (orange flex card with thumbnail) is overridden completely here. */
+body.pj-route-page .pj-rect__stage .kg-bookmark-card,
+body.pj-route-page .pj-rect__stage .kg-card.kg-bookmark-card {
+    margin: 0.4em 0 !important;
+    background: none !important;
+    color: #000 !important;
+    border: 0 !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    overflow: visible !important;
+    display: block !important;
+}
+body.pj-route-page .pj-rect__stage .kg-bookmark-card a.kg-bookmark-container,
+body.pj-route-page .pj-rect__stage .kg-card.kg-bookmark-card a.kg-bookmark-container {
+    display: inline !important;
+    flex-direction: row !important;
+    background: none !important;
+    color: #000 !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    box-shadow: none !important;
+    outline: 0 !important;
+    min-height: 0 !important;
+    text-decoration: underline !important;
+    text-underline-offset: 0.12em !important;
+    overflow: visible !important;
+    transition: background 120ms ease, color 120ms ease !important;
+}
+body.pj-route-page .pj-rect__stage .kg-bookmark-card a.kg-bookmark-container:hover {
+    background: #000 !important;
+    color: #fff !important;
+    text-decoration: none !important;
+    outline: 0 !important;
+    padding: 0 0.18em !important;
+    margin: 0 -0.18em !important;
+}
+/* Show only the title; hide everything else. */
+body.pj-route-page .pj-rect__stage .kg-bookmark-content {
+    display: inline !important;
+    flex: 0 0 auto !important;
+    padding: 0 !important;
+}
+body.pj-route-page .pj-rect__stage .kg-bookmark-title {
+    display: inline !important;
+    font: inherit !important;
+    font-weight: 700 !important;
+    color: inherit !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    -webkit-text-stroke: 0 !important;
+    text-transform: none !important;
+}
+body.pj-route-page .pj-rect__stage .kg-bookmark-description,
+body.pj-route-page .pj-rect__stage .kg-bookmark-metadata,
+body.pj-route-page .pj-rect__stage .kg-bookmark-icon,
+body.pj-route-page .pj-rect__stage .kg-bookmark-author,
+body.pj-route-page .pj-rect__stage .kg-bookmark-publisher,
+body.pj-route-page .pj-rect__stage .kg-bookmark-thumbnail {
+    display: none !important;
+}
