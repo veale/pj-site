@@ -1250,8 +1250,8 @@ body.pj-route-page .pj-menu-tab { display: inline-block; }
     display: flex;
     align-items: center;
     justify-content: flex-start;
-    font-family: var(--font-display);
-    font-weight: 900;
+    font-family: var(--font-sans-serif);
+    font-weight: 800;
     font-style: normal;
     font-stretch: normal;
     text-decoration: none;
@@ -1686,6 +1686,13 @@ del,
 s,
 strike,
 .gh-content del,
-.gh-content s {
-    color: #555;
+.gh-content s,
+.gh-content strike,
+body.pj-route-page .pj-rect__stage del,
+body.pj-route-page .pj-rect__stage s,
+body.pj-route-page .pj-rect__stage strike,
+body.pj-route-page .pj-rect__stage .gh-content del,
+body.pj-route-page .pj-rect__stage .gh-content s,
+body.pj-route-page .pj-rect__stage .gh-content strike {
+    color: #555 !important;
 }
