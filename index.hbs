@@ -30,8 +30,11 @@
     navSource.querySelectorAll('a').forEach((a) => {
       const link = document.createElement('a');
       link.href = a.getAttribute('href') || '#';
-      link.textContent = a.textContent.trim();
       link.className = 'enter-card__menu-item';
+      const span = document.createElement('span');
+      span.className = 'enter-card__menu-text';
+      span.textContent = a.textContent.trim();
+      link.appendChild(span);
       menuEl.appendChild(link);
     });
   }
@@ -51,10 +54,11 @@
     const wBuf = 4;
     const targetW = Math.max(1, innerW - wBuf);
     const probeSize = 100;
+    const measureEl = (el) => el.querySelector('.enter-card__menu-text') || el;
     let maxRatio = 0;
     for (const el of items) {
       el.style.fontSize = probeSize + 'px';
-      const r = el.scrollWidth / probeSize;
+      const r = measureEl(el).scrollWidth / probeSize;
       if (r > maxRatio) maxRatio = r;
     }
     if (maxRatio <= 0) return;

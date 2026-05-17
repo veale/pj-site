@@ -37,7 +37,7 @@
      (everywhere else). SPA swaps only the contents of [data-rect-stage]. --}}
 <main class="pj-rect" data-rect>
     <a class="pj-menu-tab" href="{{@site.url}}" data-menu-tab>menu</a>
-    <div class="pj-rect__stage" data-rect-stage data-route-template="{{@view}}">
+    <div class="pj-rect__stage" data-rect-stage>
         {{{body}}}
     </div>
     <div class="pj-scroll-indicator" data-scroll-ind aria-hidden="true"></div>
@@ -289,9 +289,6 @@
       if (!newStage) { location.href = href; return; }
 
       stageEl.innerHTML = newStage.innerHTML;
-
-      const newView = newStage.getAttribute('data-route-template') || '';
-      stageEl.setAttribute('data-route-template', newView);
 
       const newBodyClass = doc.body.getAttribute('class') || '';
       document.body.setAttribute('class', newBodyClass);
