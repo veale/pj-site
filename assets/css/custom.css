@@ -1165,20 +1165,24 @@ body { background: #0a0a0a; }
     font-weight: 800;
     text-transform: lowercase;
     text-decoration: none;
-    padding: 5px 12px 3px;
+    padding: 0 12px;
+    height: 22px;
     line-height: 1;
     font-size: 14px;
     letter-spacing: 0.02em;
     display: none;
-    transition: background 120ms ease, color 120ms ease,
-                -webkit-text-stroke-width 120ms ease;
+    align-items: center;
+    justify-content: center;
+    transition: background 120ms ease, color 120ms ease;
+    -webkit-text-stroke: 0;
 }
-.pj-menu-tab:hover {
+.pj-menu-tab:hover,
+.pj-menu-tab:focus-visible {
     background: #fff;
-    color: transparent;
-    -webkit-text-stroke: 1px #000;
+    color: #000;
+    -webkit-text-stroke: 0;
 }
-body.pj-route-page .pj-menu-tab { display: inline-block; }
+body.pj-route-page .pj-menu-tab { display: inline-flex; }
 
 /* ============================================================
  * ENTER-CARD (home content) — fills the rectangle stage
