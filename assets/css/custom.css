@@ -22,7 +22,7 @@
 }
 
 :root {
-    --font-display: "NaNHoloGigawide Ultra", var(--font-sans-serif);
+    --font-display: var(--font-sans-serif);
     --color-orange: #FF6720;
 }
 
@@ -1161,8 +1161,8 @@ body { background: #0a0a0a; }
     background: #000;
     color: #fff;
     border: 1px solid #000;
-    font-family: "NaNHoloGigawide Ultra", var(--font-sans-serif);
-    font-weight: 900;
+    font-family: var(--font-sans-serif);
+    font-weight: 800;
     text-transform: lowercase;
     text-decoration: none;
     padding: 5px 12px 3px;
@@ -1229,8 +1229,8 @@ body.pj-route-page .pj-menu-tab { display: inline-block; }
 .enter-card__link {
     position: relative;
     z-index: 4;
-    font-family: "NaNHoloGigawide Ultra", var(--font-sans-serif);
-    font-weight: 900;
+    font-family: var(--font-sans-serif);
+    font-weight: 800;
     color: #fff;
     text-decoration: none;
     text-transform: lowercase;
