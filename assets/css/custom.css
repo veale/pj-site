@@ -1674,3 +1674,12 @@ body.pj-route-page .pj-rect__stage .kg-bookmark-publisher,
 body.pj-route-page .pj-rect__stage .kg-bookmark-thumbnail {
     display: none !important;
 }
+
+/* Strikethrough text in a darkish grey rather than inheriting black */
+del,
+s,
+strike,
+.gh-content del,
+.gh-content s {
+    color: #555;
+}
