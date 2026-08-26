@@ -71,6 +71,12 @@
   stage.appendChild(bigCanvas);
   const bigCtx = bigCanvas.getContext('2d');
 
+  const DISPLAY_FONT = '"NaNHoloGigawide Ultra"';
+  function displayFontReady() {
+    if (!document.fonts || !document.fonts.check) return true;
+    try { return document.fonts.check('900 64px ' + DISPLAY_FONT); } catch (_) { return true; }
+  }
+
   const metricsCache = new Map();
   function getMetrics(fontStr) {
     let m = metricsCache.get(fontStr);
@@ -78,7 +84,12 @@
     bigCtx.font = fontStr;
     const widths = []; let total = 0;
     for (const ch of TEXT) { const w = bigCtx.measureText(ch).width; widths.push(w); total += w; }
-    m = { widths, total }; metricsCache.set(fontStr, m); return m;
+    m = { widths, total };
+    // Only cache once the real display font is in use. Fallback advance widths
+    // are much narrower than the Gigawide glyphs, and a cached set of them makes
+    // every repeat of the word draw on top of the last one.
+    if (displayFontReady()) metricsCache.set(fontStr, m);
+    return m;
   }
   function getColor(rowIdx, instIdx) {
     if (state.colorCount <= 1) return '#FFFFFF';
@@ -209,10 +220,35 @@
 
   document.body.style.backgroundColor = state.bgColor;
   window.addEventListener('resize', layoutRows);
-  if (document.fonts && document.fonts.ready) {
-    document.fonts.ready.then(() => { layoutRows(); requestAnimationFrame(frame); });
+
+  // The display font is used *only* by this canvas — no CSS rule references
+  // it — so on a direct load of a non-home page nothing asks the browser to
+  // download it and `document.fonts.ready` resolves straight away. Measuring
+  // then caches fallback-font advance widths, which are far narrower than the
+  // real glyphs, and the text draws on top of itself. So request the font
+  // explicitly, and re-measure if it lands after we've started drawing.
+  let started = false;
+  function start() {
+    if (started) return;
+    started = true;
+    layoutRows();
+    requestAnimationFrame(frame);
+  }
+  function remeasure() { metricsCache.clear(); layoutRows(); }
+
+  if (document.fonts && document.fonts.load) {
+    Promise.all([
+      document.fonts.load('900 64px ' + DISPLAY_FONT),
+      document.fonts.load('400 64px ' + DISPLAY_FONT)
+    ]).catch(() => {}).then(() => (document.fonts.ready || Promise.resolve()).catch(() => {}).then(start));
+    // font-display: block gives the font up to 3s; never leave the canvas blank
+    // longer than that if the file fails to arrive.
+    setTimeout(start, 3000);
+    if (document.fonts.addEventListener) {
+      document.fonts.addEventListener('loadingdone', () => { if (started) remeasure(); });
+    }
   } else {
-    layoutRows(); requestAnimationFrame(frame);
+    start();
   }
 
   // First hero image → background mask
