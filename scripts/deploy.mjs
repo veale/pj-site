@@ -31,9 +31,20 @@ const upload = await fetch(`${base}/ghost/api/admin/themes/upload/`, {
     method: 'POST',
     headers: { Authorization: `Ghost ${token()}` },
     body: fd,
+    // Don't follow redirects: if the site has moved, a redirect lands the
+    // request on the front-end, which answers 200 with HTML and looks like a
+    // successful upload while nothing has been deployed.
+    redirect: 'manual',
 });
 if (!upload.ok) {
     console.error(`Upload failed: ${upload.status}\n${await upload.text()}`);
+    if (upload.status >= 300 && upload.status < 400) {
+        console.error(`Redirected to ${upload.headers.get('location')} — is GHOST_ADMIN_API_URL still correct?`);
+    }
+    process.exit(1);
+}
+if (!(upload.headers.get('content-type') || '').includes('json')) {
+    console.error('Upload did not return JSON — GHOST_ADMIN_API_URL is probably not pointing at the Ghost admin API.');
     process.exit(1);
 }
 console.log('Uploaded.');
@@ -42,6 +53,7 @@ console.log(`Activating ${themeName}...`);
 const activate = await fetch(`${base}/ghost/api/admin/themes/${themeName}/activate/`, {
     method: 'PUT',
     headers: { Authorization: `Ghost ${token()}` },
+    redirect: 'manual',
 });
 if (!activate.ok) {
     console.error(`Activation failed: ${activate.status}\n${await activate.text()}`);
