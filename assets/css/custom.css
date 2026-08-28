@@ -373,6 +373,9 @@ a:not([class]) {
  * ---------------------------------------------------------- */
 
 :root {
+    /* Background of the rect's stage — the "box". The menu tab's hover fill
+     * reads from this so the two can never drift apart. */
+    --pj-box-bg: #fff;
     --card-radius: 2px;
     --card-bg: #fff;
     --card-fg: var(--color-orange);
@@ -1178,12 +1181,14 @@ body { background: #0a0a0a; }
 }
 .pj-menu-tab:hover,
 .pj-menu-tab:focus-visible {
-    background: #fff;
+    background: var(--pj-box-bg);
     color: #000;
-    /* Outline only the three outside edges — the bottom edge sits flush on
-     * the rect's top edge, so a black line there would cut across the box.
-     * Keep the border for layout, but paint it the same white as the fill. */
-    border-bottom-color: #fff;
+    /* Outline only the three outside edges. The bottom edge sits flush on the
+     * rect's top edge, so a black line there would cut across the box. The
+     * border stays in place for layout; making it transparent lets the tab's
+     * own background (the box colour) paint through, so the tab reads as one
+     * shape with the box whatever that colour is. */
+    border-bottom-color: transparent;
     -webkit-text-stroke: 0;
 }
 body.pj-route-page .pj-menu-tab { display: inline-flex; }
@@ -1290,7 +1295,7 @@ body.pj-route-page .pj-menu-tab { display: inline-flex; }
  * ============================================================ */
 
 body.pj-route-page .pj-rect__stage {
-    background: #fff;
+    background: var(--pj-box-bg);
     color: #000;
     overflow: auto;
     -webkit-overflow-scrolling: touch;
