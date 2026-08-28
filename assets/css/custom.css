@@ -1180,6 +1180,10 @@ body { background: #0a0a0a; }
 .pj-menu-tab:focus-visible {
     background: #fff;
     color: #000;
+    /* Outline only the three outside edges — the bottom edge sits flush on
+     * the rect's top edge, so a black line there would cut across the box.
+     * Keep the border for layout, but paint it the same white as the fill. */
+    border-bottom-color: #fff;
     -webkit-text-stroke: 0;
 }
 body.pj-route-page .pj-menu-tab { display: inline-flex; }
